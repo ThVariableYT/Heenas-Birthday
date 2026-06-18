@@ -5,11 +5,13 @@ import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
 import { startAmbientPad, stopAmbientPad, playChime } from "@/lib/audio";
 import { sparkle } from "./SparkleCanvas";
+import SparkleCursor from "./SparkleCursor";
 import { useStatsStore } from "@/lib/stats-store";
 
 export default function FloatingControls() {
   const [ambientOn, setAmbientOn] = useState(false);
   const [shared, setShared] = useState(false);
+  const [cursorOn, setCursorOn] = useState(false);
   const [mounted, setMounted] = useState(false);
   const { theme, setTheme } = useTheme();
   const incStat = useStatsStore((s) => s.inc);
@@ -18,6 +20,28 @@ export default function FloatingControls() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
   }, []);
+
+  // Restore sparkle-cursor preference from localStorage on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("heena:sparkle-cursor");
+      if (saved === "on") {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setCursorOn(true);
+      }
+    } catch {
+      // no-op
+    }
+  }, []);
+
+  // Persist sparkle-cursor preference
+  useEffect(() => {
+    try {
+      localStorage.setItem("heena:sparkle-cursor", cursorOn ? "on" : "off");
+    } catch {
+      // no-op
+    }
+  }, [cursorOn]);
 
   // Single source of truth for ambient pad start/stop — runs whenever ambientOn changes.
   // On first mount ambientOn is false, so stopAmbientPad() is a harmless no-op.
@@ -33,11 +57,26 @@ export default function FloatingControls() {
   // Listen for keyboard-driven ambient toggle requests (M key via KeyboardShortcuts)
   useEffect(() => {
     const onReq = () => setAmbientOn((prev) => !prev);
+    const onCursorReq = () => setCursorOn((prev) => !prev);
     window.addEventListener("heena:toggle-ambient", onReq);
-    return () => window.removeEventListener("heena:toggle-ambient", onReq);
+    window.addEventListener("heena:toggle-cursor", onCursorReq);
+    return () => {
+      window.removeEventListener("heena:toggle-ambient", onReq);
+      window.removeEventListener("heena:toggle-cursor", onCursorReq);
+    };
   }, []);
 
   const toggleAmbient = () => setAmbientOn((prev) => !prev);
+  const toggleCursor = () => {
+    setCursorOn((prev) => {
+      const next = !prev;
+      playChime(next ? 659.25 : 523.25, "sine", 0.5, 0.08);
+      if (next) {
+        sparkle({ x: window.innerWidth - 60, y: 200, count: 14, kind: "gold" });
+      }
+      return next;
+    });
+  };
 
   const burst = () => {
     sparkle({
@@ -86,6 +125,7 @@ export default function FloatingControls() {
 
   return (
     <>
+      <SparkleCursor active={cursorOn} />
       <div className="fixed right-4 top-4 z-50 flex flex-col gap-2">
         <motion.button
           onClick={burst}
@@ -137,6 +177,21 @@ export default function FloatingControls() {
               </motion.svg>
             )}
           </AnimatePresence>
+        </motion.button>
+
+        <motion.button
+          onClick={toggleCursor}
+          className={`glass-premium flex h-10 w-10 items-center justify-center rounded-full shadow-xl interactive-scale ${cursorOn ? "text-amber-600 ring-1 ring-amber-400/50" : "text-stone-600"}`}
+          whileHover={{ scale: 1.08 }}
+          whileTap={{ scale: 0.92 }}
+          aria-label={cursorOn ? "Disable sparkle cursor" : "Enable sparkle cursor"}
+          aria-pressed={cursorOn}
+          title={cursorOn ? "Sparkle cursor on — press C to turn off" : "Sparkle cursor off — press C to turn on"}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z" />
+            <path d="M13 13l6 6" />
+          </svg>
         </motion.button>
 
         {mounted && (

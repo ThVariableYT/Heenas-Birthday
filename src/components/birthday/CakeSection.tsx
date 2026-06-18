@@ -7,6 +7,7 @@ import { fireConfetti } from "./ConfettiRain";
 import { playChime } from "@/lib/audio";
 import { wishMessages } from "@/lib/birthday-data";
 import { useStatsStore } from "@/lib/stats-store";
+import WishHoroscope from "./WishHoroscope";
 
 type Candle = { id: number; lit: boolean };
 type SealedWish = { text: string; at: number };
@@ -208,6 +209,16 @@ export default function CakeSection() {
           ))}
         </div>
 
+        <div className="cake-arch" aria-hidden>
+          <span className="cake-arch-glyph text-xs">✦</span>
+          <span className="cake-arch-glyph text-sm">❋</span>
+          <span className="cake-arch-glyph text-base">✺</span>
+          <span className="cake-arch-glyph text-lg">✦</span>
+          <span className="cake-arch-glyph text-base">❖</span>
+          <span className="cake-arch-glyph text-sm">✸</span>
+          <span className="cake-arch-glyph text-xs">✧</span>
+        </div>
+
         <svg viewBox="0 0 300 180" className="mt-2 w-full max-w-md drop-shadow-[0_20px_40px_rgba(244,63,94,0.18)]">
           <defs>
             <linearGradient id="cakeLayer1" x1="0" y1="0" x2="0" y2="1">
@@ -279,6 +290,8 @@ export default function CakeSection() {
                 <span>↻</span>
                 <span>Relight the candles</span>
               </motion.button>
+
+              <WishHoroscope key={sealedWish} wish={sealedWish} />
             </motion.div>
           )}
         </AnimatePresence>

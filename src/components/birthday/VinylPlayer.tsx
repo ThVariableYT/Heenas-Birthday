@@ -189,7 +189,23 @@ export default function VinylPlayer() {
 
   return (
     <section className="relative px-4 py-32">
-      <div className="mx-auto mb-16 max-w-3xl text-center">
+      {/* Ambient star field — a quiet cosmic backdrop for the record player */}
+      <div className="vinyl-star-field" aria-hidden>
+        {Array.from({ length: 28 }).map((_, i) => (
+          <span
+            key={i}
+            className="vs-star"
+            style={{
+              top: `${(i * 37 + 5) % 95}%`,
+              left: `${(i * 53 + 8) % 95}%`,
+              animationDelay: `${(i % 7) * 0.4}s`,
+              animationDuration: `${4 + (i % 4) * 0.6}s`,
+            }}
+          />
+        ))}
+      </div>
+
+      <div className="relative mx-auto mb-16 max-w-3xl text-center">
         <div className="mb-4 flex items-center justify-center gap-3">
           <div className="h-px w-10 bg-amber-400/40" />
           <span className="font-mono-elegant text-[0.65rem] uppercase tracking-[0.4em] text-amber-700/70">

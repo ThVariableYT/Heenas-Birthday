@@ -85,6 +85,12 @@ export default function HeroSection() {
         />
       ))}
 
+      {/* Floating ornamental drift glyphs — slow, dreamy motion distinct from the bob */}
+      <span className="hero-floating-ornament" style={{ top: "15%", left: "8%", animationDelay: "0s" }} aria-hidden>✦</span>
+      <span className="hero-floating-ornament" style={{ top: "78%", left: "92%", animationDelay: "3s" }} aria-hidden>❋</span>
+      <span className="hero-floating-ornament" style={{ top: "85%", left: "15%", animationDelay: "6s" }} aria-hidden>✺</span>
+      <span className="hero-floating-ornament" style={{ top: "12%", left: "88%", animationDelay: "9s" }} aria-hidden>❖</span>
+
       <motion.div
         className="pointer-events-none absolute left-[15%] top-[25%] h-2 w-2 rounded-full bg-amber-400/60"
         animate={{ y: [0, -20, 0], opacity: [0.3, 1, 0.3] }}

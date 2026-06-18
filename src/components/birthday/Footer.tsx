@@ -52,6 +52,12 @@ export default function Footer() {
           viewport={{ once: true }}
           transition={{ duration: 0.8 }}
         >
+          {/* Wax-seal stamp — decorative embossed monogram */}
+          <div className="relative flex items-center justify-center" aria-hidden>
+            <span className="wax-seal-rotate" />
+            <div className="wax-seal-stamp">H</div>
+          </div>
+
           <motion.button
             onClick={celebrate}
             className="group relative flex h-20 w-20 items-center justify-center rounded-full border border-amber-300/50 bg-gradient-to-br from-amber-100/80 to-rose-100/80 shadow-lg backdrop-blur"

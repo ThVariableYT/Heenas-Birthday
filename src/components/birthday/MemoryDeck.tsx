@@ -17,6 +17,7 @@ function MemoryCardItem({
   favorite,
   onFlip,
   onToggleFavorite,
+  onOpenReading,
   order,
 }: {
   card: MemoryCard;
@@ -25,6 +26,7 @@ function MemoryCardItem({
   favorite: boolean;
   onFlip: (next: boolean, rect: DOMRect) => void;
   onToggleFavorite: (rect: DOMRect) => void;
+  onOpenReading: (cardId: number) => void;
   order: number;
 }) {
   const [tilt, setTilt] = useState({ rx: 0, ry: 0 });
@@ -160,7 +162,7 @@ function MemoryCardItem({
           </div>
 
           <div
-            className="backface-hidden absolute inset-0 overflow-hidden rounded-[2rem] border border-amber-200/60 bg-gradient-to-br from-stone-900 via-stone-800 to-rose-950 p-7 text-amber-50 shadow-[0_20px_60px_-12px_rgba(0,0,0,0.4)]"
+            className="memory-sheen backface-hidden absolute inset-0 overflow-hidden rounded-[2rem] border border-amber-200/60 bg-gradient-to-br from-stone-900 via-stone-800 to-rose-950 p-7 text-amber-50 shadow-[0_20px_60px_-12px_rgba(0,0,0,0.4)]"
             style={{ transform: "rotateY(180deg)" }}
           >
             <div className="flex h-full flex-col justify-between">
@@ -179,7 +181,22 @@ function MemoryCardItem({
                 <span className="font-serif-elegant text-xs text-rose-300/70">
                   {card.back.signature}
                 </span>
-                <span className="text-amber-400/60">✦</span>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onOpenReading(card.id);
+                    }}
+                    className="flex h-6 w-6 items-center justify-center rounded-full border border-amber-400/40 bg-amber-500/10 text-amber-300 transition-all hover:scale-110 hover:bg-amber-500/20 focus-ring-visible"
+                    aria-label={`Open ${card.front.title} in reading mode`}
+                    title="Reading mode"
+                  >
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M15 3h6v6M14 10l7-7M9 21H3v-6M10 14l-7 7" />
+                    </svg>
+                  </button>
+                  <span className="text-amber-400/60">✦</span>
+                </div>
               </div>
             </div>
 
@@ -306,6 +323,48 @@ export default function MemoryDeck() {
   const allRevealed = revealedCount === total;
   const favoritesCount = favoritesSet.size;
 
+  // Reading-mode overlay state — focused full-screen memory card viewer
+  const [readingIndex, setReadingIndex] = useState<number | null>(null);
+
+  // Reading mode keyboard navigation — ArrowLeft / ArrowRight / Escape
+  useEffect(() => {
+    if (readingIndex === null) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "ArrowRight") {
+        e.preventDefault();
+        setReadingIndex((i) => (i === null ? i : (i + 1) % memoryCards.length));
+        playChime(440 + Math.random() * 60, "sine", 0.4, 0.08);
+      } else if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        setReadingIndex((i) => (i === null ? i : (i - 1 + memoryCards.length) % memoryCards.length));
+        playChime(330 + Math.random() * 60, "sine", 0.4, 0.08);
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        setReadingIndex(null);
+        playChime(294, "sine", 0.4, 0.08);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    // Lock body scroll while overlay is open
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [readingIndex]);
+
+  const openReading = (cardId: number) => {
+    setReadingIndex(cardId - 1); // memoryCards ids are 1-based
+    sparkle({ x: window.innerWidth / 2, y: window.innerHeight / 2, count: 18, kind: "gold" });
+    playChime(659.25, "sine", 0.6, 0.1);
+  };
+
+  const closeReading = () => {
+    setReadingIndex(null);
+    playChime(392, "sine", 0.4, 0.08);
+  };
+
   const revealAll = () => {
     const all = new Set(memoryCards.map((c) => c.id));
     setFlippedSet(all);
@@ -429,6 +488,7 @@ export default function MemoryDeck() {
               favorite={favoritesSet.has(card.id)}
               onFlip={(next, rect) => handleFlip(card.id, next, rect, cardIndex)}
               onToggleFavorite={(rect) => toggleFavorite(card.id, rect)}
+              onOpenReading={openReading}
             />
           );
         })}
@@ -442,6 +502,137 @@ export default function MemoryDeck() {
           </span>
         </div>
       )}
+
+      {/* Reading mode overlay — focused full-screen memory viewer */}
+      <AnimatePresence>
+        {readingIndex !== null && memoryCards[readingIndex] && (
+          <motion.div
+            className="fixed inset-0 z-[80] flex items-center justify-center px-4 py-8"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Memory reading mode"
+            onClick={closeReading}
+          >
+            {/* Backdrop — deep starry night */}
+            <div className="absolute inset-0 bg-gradient-to-br from-stone-950 via-rose-950/80 to-stone-900 backdrop-blur-md" />
+            <div className="reading-stars absolute inset-0 overflow-hidden" aria-hidden>
+              {Array.from({ length: 36 }).map((_, i) => (
+                <span
+                  key={i}
+                  className="reading-star"
+                  style={{
+                    top: `${(i * 67) % 100}%`,
+                    left: `${(i * 91) % 100}%`,
+                    animationDelay: `${(i % 8) * 0.35}s`,
+                    animationDuration: `${2 + (i % 5) * 0.5}s`,
+                  }}
+                />
+              ))}
+            </div>
+
+            {/* Card content — large typography, full focus */}
+            <motion.div
+              key={readingIndex}
+              className="glass-premium relative z-10 w-full max-w-2xl rounded-[2rem] border border-amber-200/30 bg-gradient-to-br from-stone-900/95 via-stone-800/95 to-rose-950/95 p-10 text-amber-50 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.7)] sm:p-14"
+              initial={{ scale: 0.92, y: 24, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.95, y: 12, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 240, damping: 26 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Corner flourishes */}
+              <span className="corner-flourish corner-flourish-tl" aria-hidden />
+              <span className="corner-flourish corner-flourish-tr" aria-hidden />
+              <span className="corner-flourish corner-flourish-bl" aria-hidden />
+              <span className="corner-flourish corner-flourish-br" aria-hidden />
+
+              {/* Top label + counter */}
+              <div className="mb-6 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl text-amber-400/80">{memoryCards[readingIndex].front.glyph}</span>
+                  <span className="font-mono-elegant text-[0.6rem] uppercase tracking-[0.4em] text-amber-400/70">
+                    {memoryCards[readingIndex].front.label}
+                  </span>
+                </div>
+                <span className="font-mono-elegant text-[0.6rem] uppercase tracking-[0.3em] text-amber-400/60">
+                  {readingIndex + 1} / {memoryCards.length}
+                </span>
+              </div>
+
+              <div className="mb-4 h-px w-16 bg-amber-400/40" />
+
+              {/* Title */}
+              <h3 className="font-serif-elegant text-4xl font-bold leading-tight text-amber-50 sm:text-5xl">
+                {memoryCards[readingIndex].front.title}
+              </h3>
+
+              <p className="mt-2 font-serif-elegant text-sm italic text-rose-300/70">
+                {memoryCards[readingIndex].back.title}
+              </p>
+
+              {/* Body — large reading typography */}
+              <p className="mt-8 font-serif-elegant text-lg italic leading-relaxed text-amber-100/95 sm:text-xl">
+                &ldquo;{memoryCards[readingIndex].back.body}&rdquo;
+              </p>
+
+              <p className="mt-6 text-right font-serif-elegant text-sm text-rose-300/70">
+                {memoryCards[readingIndex].back.signature}
+              </p>
+
+              {/* Nav controls */}
+              <div className="mt-10 flex items-center justify-between gap-3">
+                <button
+                  onClick={() => setReadingIndex((i) => (i === null ? i : (i - 1 + memoryCards.length) % memoryCards.length))}
+                  className="group flex items-center gap-2 rounded-full border border-amber-400/30 bg-amber-500/10 px-4 py-2 font-mono-elegant text-[0.6rem] uppercase tracking-[0.2em] text-amber-200 transition-colors hover:bg-amber-500/20"
+                  aria-label="Previous memory"
+                >
+                  <span className="transition-transform group-hover:-translate-x-0.5">←</span>
+                  <span>Prev</span>
+                </button>
+
+                <div className="flex items-center gap-1.5">
+                  {memoryCards.map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setReadingIndex(i)}
+                      className={`h-1.5 rounded-full transition-all ${
+                        i === readingIndex ? "w-6 bg-amber-400" : "w-1.5 bg-amber-400/30 hover:bg-amber-400/60"
+                      }`}
+                      aria-label={`Go to memory ${i + 1}`}
+                    />
+                  ))}
+                </div>
+
+                <button
+                  onClick={() => setReadingIndex((i) => (i === null ? i : (i + 1) % memoryCards.length))}
+                  className="group flex items-center gap-2 rounded-full border border-amber-400/30 bg-amber-500/10 px-4 py-2 font-mono-elegant text-[0.6rem] uppercase tracking-[0.2em] text-amber-200 transition-colors hover:bg-amber-500/20"
+                  aria-label="Next memory"
+                >
+                  <span>Next</span>
+                  <span className="transition-transform group-hover:translate-x-0.5">→</span>
+                </button>
+              </div>
+
+              {/* Close + hint */}
+              <div className="mt-6 flex items-center justify-center gap-4">
+                <button
+                  onClick={closeReading}
+                  className="font-mono-elegant text-[0.55rem] uppercase tracking-[0.3em] text-amber-400/50 transition-colors hover:text-amber-300"
+                >
+                  ✕ close reading
+                </button>
+              </div>
+              <p className="mt-3 text-center font-mono-elegant text-[0.55rem] uppercase tracking-[0.25em] text-amber-400/40">
+                ← → to navigate · Esc to close
+              </p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </section>
   );
 }

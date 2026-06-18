@@ -19,6 +19,7 @@ import ComplimentsSection from "@/components/birthday/ComplimentsSection";
 import StatsFinale from "@/components/birthday/StatsFinale";
 import KeyboardShortcuts from "@/components/birthday/KeyboardShortcuts";
 import FilmGrainOverlay from "@/components/birthday/FilmGrainOverlay";
+import SectionDivider from "@/components/birthday/SectionDivider";
 import { initAudio, resumeAudio, startAmbientPad } from "@/lib/audio";
 
 const TimelineSection = dynamic(() => import("@/components/birthday/TimelineSection"));
@@ -74,11 +75,17 @@ export default function Home() {
           >
             <HeroSection />
             <TimelineSection />
+            <SectionDivider index={0} />
             <MemoryDeck />
+            <SectionDivider index={1} />
             <LoveJar />
+            <SectionDivider index={2} />
             <ComplimentsSection />
+            <SectionDivider index={3} />
             <VinylPlayer />
+            <SectionDivider index={4} />
             <CakeSection />
+            <SectionDivider index={5} />
             <StatsFinale />
             <Footer />
           </motion.main>

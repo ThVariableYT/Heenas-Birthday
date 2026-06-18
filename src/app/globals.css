@@ -858,8 +858,277 @@ kbd {
 @media (prefers-reduced-motion: reduce) {
   .constellation-dot,
   .heading-halo::before,
-  .section-ornament .ornament-glyph::after {
+  .section-ornament .ornament-glyph::after,
+  .reading-star,
+  .vinyl-star-field .vs-star,
+  .hero-floating-ornament,
+  .wax-seal-stamp .wax-seal-rotate,
+  .cake-arch-glyph {
     animation: none !important;
   }
+}
+
+/* ============================================================
+   NEW STYLE ADDITIONS — premium details for the new features
+   ============================================================ */
+
+/* Corner-flourish compound-class aliases (used by WishHoroscope + Reading mode) */
+.corner-flourish-tl { top: 8px; left: 8px; }
+.corner-flourish-tl::before { top: 0; left: 0; }
+.corner-flourish-tl::after { top: 0; left: 0; }
+.corner-flourish-tr { top: 8px; right: 8px; }
+.corner-flourish-tr::before { top: 0; right: 0; }
+.corner-flourish-tr::after { top: 0; right: 0; }
+.corner-flourish-bl { bottom: 8px; left: 8px; }
+.corner-flourish-bl::before { bottom: 0; left: 0; }
+.corner-flourish-bl::after { bottom: 0; left: 0; }
+.corner-flourish-br { bottom: 8px; right: 8px; }
+.corner-flourish-br::before { bottom: 0; right: 0; }
+.corner-flourish-br::after { bottom: 0; right: 0; }
+
+/* Reading-mode star field — a starry backdrop for the focused memory overlay */
+.reading-stars {
+  pointer-events: none;
+}
+.reading-star {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  border-radius: 50%;
+  background: rgba(251, 191, 36, 0.9);
+  box-shadow: 0 0 4px rgba(251, 191, 36, 0.7), 0 0 8px rgba(244, 63, 94, 0.3);
+  animation: reading-star-twinkle 3s ease-in-out infinite;
+}
+@keyframes reading-star-twinkle {
+  0%, 100% { opacity: 0.2; transform: scale(0.7); }
+  50% { opacity: 1; transform: scale(1.4); }
+}
+
+/* Section divider — ornamental glyph with shimmer, for between-section breaks */
+.section-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 2rem 0;
+  pointer-events: none;
+  user-select: none;
+}
+.section-divider .divider-line {
+  height: 1px;
+  width: 80px;
+  background: linear-gradient(90deg, transparent, rgba(180, 83, 9, 0.35), transparent);
+}
+.section-divider .divider-glyph {
+  font-family: var(--font-serif), serif;
+  font-size: 0.9rem;
+  color: rgba(180, 83, 9, 0.55);
+  letter-spacing: 0.5em;
+  position: relative;
+  animation: divider-shimmer 4s ease-in-out infinite;
+}
+@keyframes divider-shimmer {
+  0%, 100% { opacity: 0.5; text-shadow: 0 0 0 transparent; }
+  50% { opacity: 1; text-shadow: 0 0 12px rgba(251, 191, 36, 0.5); }
+}
+.dark .section-divider .divider-line {
+  background: linear-gradient(90deg, transparent, rgba(251, 191, 36, 0.4), transparent);
+}
+.dark .section-divider .divider-glyph {
+  color: rgba(251, 191, 36, 0.7);
+}
+
+/* Vinyl section ambient star field — a quiet cosmic backdrop behind the record player */
+.vinyl-star-field {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.vinyl-star-field .vs-star {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  border-radius: 50%;
+  background: rgba(251, 191, 36, 0.6);
+  box-shadow: 0 0 4px rgba(251, 191, 36, 0.4);
+  animation: vinyl-star-twinkle 5s ease-in-out infinite;
+}
+@keyframes vinyl-star-twinkle {
+  0%, 100% { opacity: 0.15; transform: scale(0.6); }
+  50% { opacity: 0.9; transform: scale(1.2); }
+}
+.dark .vinyl-star-field .vs-star {
+  background: rgba(251, 191, 36, 0.8);
+  box-shadow: 0 0 6px rgba(251, 191, 36, 0.6);
+}
+
+/* Hero floating ornaments — slow-drifting glyphs in the hero background */
+.hero-floating-ornament {
+  position: absolute;
+  font-family: var(--font-serif), serif;
+  color: rgba(180, 83, 9, 0.2);
+  font-size: 1.5rem;
+  pointer-events: none;
+  user-select: none;
+  animation: hero-ornament-drift 12s ease-in-out infinite;
+}
+@keyframes hero-ornament-drift {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); opacity: 0.2; }
+  25% { transform: translate(8px, -12px) rotate(8deg); opacity: 0.5; }
+  50% { transform: translate(-6px, -20px) rotate(-6deg); opacity: 0.3; }
+  75% { transform: translate(-10px, -8px) rotate(4deg); opacity: 0.45; }
+}
+.dark .hero-floating-ornament {
+  color: rgba(251, 191, 36, 0.25);
+}
+
+/* Footer wax-seal stamp — a decorative embossed circular seal */
+.wax-seal-stamp {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #f43f5e 0%, #be123c 60%, #881337 100%);
+  box-shadow:
+    inset 0 -2px 4px rgba(0, 0, 0, 0.3),
+    inset 0 2px 3px rgba(255, 255, 255, 0.2),
+    0 4px 12px rgba(190, 18, 60, 0.4);
+  color: rgba(255, 230, 230, 0.92);
+  font-family: var(--font-serif), serif;
+  font-weight: 700;
+  font-size: 1.1rem;
+  letter-spacing: 0.05em;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.4);
+}
+.wax-seal-stamp::before {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border-radius: 50%;
+  border: 1px dashed rgba(255, 230, 230, 0.4);
+}
+.wax-seal-rotate {
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 1px dotted rgba(190, 18, 60, 0.3);
+  animation: wax-seal-spin 30s linear infinite;
+}
+@keyframes wax-seal-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Cake section decorative arch — ornamental SVG-friendly glyph row above the cake */
+.cake-arch {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  font-family: var(--font-serif), serif;
+  color: rgba(180, 83, 9, 0.45);
+  pointer-events: none;
+  user-select: none;
+}
+.cake-arch-glyph {
+  display: inline-block;
+  animation: cake-arch-sway 4s ease-in-out infinite;
+}
+.cake-arch-glyph:nth-child(odd) { animation-delay: 0.2s; }
+.cake-arch-glyph:nth-child(3n) { animation-delay: 0.4s; }
+@keyframes cake-arch-sway {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+.dark .cake-arch { color: rgba(251, 191, 36, 0.55); }
+
+/* Memory card sheen — iridescent sweep across the back of memory cards on hover */
+.memory-sheen {
+  position: relative;
+  overflow: hidden;
+}
+.memory-sheen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    120deg,
+    transparent 35%,
+    rgba(255, 230, 200, 0.18) 45%,
+    rgba(255, 200, 220, 0.22) 50%,
+    rgba(220, 200, 255, 0.18) 55%,
+    transparent 65%
+  );
+  transform: translateX(-120%);
+  transition: transform 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+}
+.memory-sheen:hover::after,
+.memory-sheen:focus-visible::after {
+  transform: translateX(120%);
+}
+
+/* Iridescent ring for active focus elements (horoscope glyph, reading card) */
+.iridescent-ring {
+  position: relative;
+}
+.iridescent-ring::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  padding: 1px;
+  background: conic-gradient(
+    from var(--iridescent-angle, 0deg),
+    rgba(251, 191, 36, 0.6),
+    rgba(244, 63, 94, 0.5),
+    rgba(139, 92, 246, 0.5),
+    rgba(16, 185, 129, 0.4),
+    rgba(251, 191, 36, 0.6)
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+/* Soft pulse for newly revealed elements (the horoscope reveal) */
+@keyframes soft-pulse-reveal {
+  0% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.4); }
+  70% { box-shadow: 0 0 0 18px rgba(251, 191, 36, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0); }
+}
+.pulse-reveal {
+  animation: soft-pulse-reveal 1.6s ease-out 1;
+}
+
+/* Focus-ring visibility helper (used by interactive card elements) */
+.focus-ring-visible {
+  outline: none;
+}
+.focus-ring-visible:focus-visible {
+  outline: 2px solid rgba(251, 191, 36, 0.7);
+  outline-offset: 3px;
+  border-radius: 8px;
+}
+
+/* No-scrollbar utility (used by wish album) */
+.no-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(180, 83, 9, 0.3) transparent;
+}
+.no-scrollbar::-webkit-scrollbar { width: 6px; }
+.no-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.no-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(180, 83, 9, 0.25);
+  border-radius: 3px;
+}
+.no-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(180, 83, 9, 0.4);
 }
 

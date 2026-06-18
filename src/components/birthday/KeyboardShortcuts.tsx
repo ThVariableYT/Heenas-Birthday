@@ -56,6 +56,10 @@ export default function KeyboardShortcuts() {
         // Use a custom event so FloatingControls can sync its icon
         window.dispatchEvent(new CustomEvent("heena:toggle-ambient"));
         playChime(440, "sine", 0.4, 0.08);
+      } else if (key === "c") {
+        e.preventDefault();
+        window.dispatchEvent(new CustomEvent("heena:toggle-cursor"));
+        playChime(523.25, "sine", 0.4, 0.08);
       } else if (key === "b") {
         e.preventDefault();
         window.scrollTo({ top: 0, behavior: "smooth" });
@@ -114,6 +118,7 @@ export default function KeyboardShortcuts() {
                 { key: "S", label: "fire a sparkle burst" },
                 { key: "T", label: "toggle light / dark" },
                 { key: "M", label: "ambient music on / off" },
+                { key: "C", label: "sparkle cursor on / off" },
                 { key: "B", label: "back to top" },
                 { key: "?", label: "show / hide this hint" },
                 { key: "Esc", label: "close any overlay" },
