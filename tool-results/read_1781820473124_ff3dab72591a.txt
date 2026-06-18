@@ -1,0 +1,302 @@
+     1→     1→   200→   200→- **Created FilmGrainOverlay** — a fixed, pointer-events-none SVG turbulence noise overlay at 3.5% opacity with soft-light blend mode, generating a 200×200 noise tile as a data URL (useMemo, no re-renders). Adds a premium analog texture.
+     2→     2→   201→   201→- **Upgraded Hero** — added 8 constellation dots (twinkling amber stars) scattered around the title area with `constellation-twinkle` keyframe animation.
+     3→     3→   202→   202→- **Upgraded ScrollProgress** — added a traveling glow dot (radial gradient, blur, screen blend) that sweeps along the progress bar as you scroll, plus a base track behind the gradient bar. Uses `useTransform` on scrollYProgress for position.
+     4→     4→   203→   203→- **Upgraded Footer** — the signature now types out character-by-character (45ms/char) with a blinking cursor (solid while typing, blinking when done).
+     5→     5→   204→   204→- **Added styling utilities to globals.css**:
+     6→     6→   205→   205→  - `.section-ornament` — ornamental divider (✦ — ✦ with shimmer).
+     7→     7→   206→   206→  - `.glass-premium:hover` / `.glass-card:hover` — subtle iridescent border ring + warm glow on hover.
+     8→     8→   207→   207→  - `.scroll-progress-glow` — traveling glow dot styling.
+     9→     9→   208→   208→  - `@keyframes smoke-rise` + `.smoke-wisp` — rising smoke animation.
+    10→    10→   209→   209→  - `.constellation-dot` + `@keyframes constellation-twinkle` — twinkling stars.
+    11→    11→   210→   210→  - `.heading-halo` + `@keyframes halo-breathe` — animated gradient halo behind headings.
+    12→    12→   211→   211→  - `.stat-sheen` — gradient sheen sweep on hover.
+    13→    13→   212→   212→  - `kbd` — keyboard key styling (amber-tinted, inset shadow).
+    14→    14→   213→   213→  - `.corner-flourish` (tl/tr/bl/br) — art-deco corner accents.
+    15→    15→   214→   214→  - Dark-mode variants for all new elements.
+    16→    16→   215→   215→  - `@media (prefers-reduced-motion: reduce)` — neutralizes new infinite animations.
+    17→    17→   216→   216→
+    18→    18→   217→   217→### Bug Fixed During QA
+    19→    19→   218→   218→- **Stale stats display**: the initial AnimatedNumber used framer-motion's `animate()` + `useInView(once:true)` gate. When stats incremented while the section was out of view, the display never updated (the `if (!inView) return` guard blocked the effect re-run on value change). Replaced with a manual rAF-based counter that animates from `fromRef.current` (previous value) to the new `value` on every change, with a brief scale-pop. Removed the `useInView` gate entirely.
+    20→    20→   219→   219→- **Stats race condition**: the original store had a `hydrate()` function called in StatsFinale's useEffect. But MemoryDeck's `setStat` effects ran first (on mount, with empty sets → size 0), overwriting the not-yet-hydrated store with zeros and persisting those zeros to localStorage — wiping cumulative stats. Fixed by initializing the store synchronously from localStorage at module load (`const initialStats = load()`), eliminating the hydrate race entirely.
+    21→    21→   220→   220→
+    22→    22→   221→   221→### Stage Summary / Verification Results
+    23→    23→   222→   222→- `bun run lint` → clean (0 errors, 0 warnings).
+    24→    24→   223→   223→- Dev server compiles cleanly, `GET / 200`.
+    25→    25→   224→   224→- agent-browser desktop QA confirmed:
+    26→    26→   225→   225→  - StatsFinale section renders with 8 stat cards (2×4 grid on desktop, 2-col on mobile).
+    27→    27→   226→   226→  - Stats increment live: after flipping 1 card, drawing 1 jar thought, plucking 1 compliment, playing 1 track, blowing 3 candles → stats show memoriesRevealed=1, thoughtsKept=1, complimentsPlucked=1, tracksPlayed=1, candlesBlown=3, wishesSealed=1, sparklesFired=5. ✓
+    28→    28→   227→   227→  - Stats persist across reload (cumulative stats survive; memoriesRevealed resets per-session as designed since cards aren't re-flipped). ✓
+    29→    29→   228→   228→  - Wish album shows after sealing a wish, with timestamp + "most recent" label. ✓
+    30→    30→   229→   229→  - Keyboard shortcuts: "?" opens hint panel (lists S/T/M/B/?/Esc with kbd styling); Escape closes it. ✓
+    31→    31→   230→   230→  - Compliments "share bouquet" button visible in plucked tray; click fires rainbow sparkle. ✓
+    32→    32→   231→   231→  - Vinyl "copy lyrics" button visible when playing; click shows "✓ copied" state. ✓
+    33→    33→   232→   232→  - "now playing" pulse dot appears next to active track name. ✓
+    34→    34→   233→   233→  - Smoke wisps spawn at blown candle positions (gray radial gradient, rising + fading). ✓
+    35→    35→   234→   234→  - Film grain overlay visible (subtle texture). ✓
+    36→    36→   235→   235→  - Hero constellation dots twinkle around the title. ✓
+    37→    37→   236→   236→  - ScrollProgress traveling glow dot sweeps along the bar. ✓
+    38→    38→   237→   237→  - Footer signature types out character-by-character with blinking cursor. ✓
+    39→    39→   238→   238→  - Dark mode: all new elements adapt (ornaments, kbd, corner flourishes, stat cards). ✓
+    40→    40→   239→   239→  - No horizontal overflow (scrollWidth = innerWidth = 1280). ✓
+    41→    41→   240→   240→  - No console errors throughout all interactions. ✓
+    42→    42→   241→   241→- VLM (glm-4.6v) screenshot reviews: StatsFinale "premium stat dashboard, elegant gradient numbers"; shortcuts hint "clean kbd-styled key bindings panel"; wish album "elegant timeline of sealed wishes with timestamps"; dark mode stats "high contrast, premium glassmorphism".
+    43→    43→   242→   242→
+    44→    44→   243→   243→### Unresolved Issues or Risks, and Priority Recommendations for the Next Phase
+    45→    45→   244→   244→- **Harmless dev warning**: framer-motion `useScroll` container-position warning persists in dev (sections are `relative`). Non-blocking; cosmetic only.
+    46→    46→   245→   245→- **Vinyl audio is still procedural** (Web Audio synth, no real audio files). The "copy lyrics" feature works, but real audio + `.lrc` upload remains a future enhancement.
+    47→    47→   246→   246→- **Clipboard API in headless test**: `navigator.clipboard.writeText` may fail in agent-browser (no clipboard permission), so the bouquet/lyrics copy toasts don't appear in QA screenshots. In a real browser with a user gesture, the clipboard write succeeds and the toast shows. The sparkle + chime feedback always fires regardless.
+    48→    48→   247→   247→- **Stats are cumulative across sessions** by design (a "souvenir of the time you spent here"). `memoriesRevealed` and `favoritesPinned` are derived from current component state (per-session for revealed, persisted for favorites). The reset button in StatsFinale clears all cumulative counts if the user wants a fresh ledger.
+    49→    49→   248→   248→- **Recommended next-phase features**:
+    50→    50→   249→   249→  1. Vinyl: upload-audio + `.lrc` lyrics (real playback + true scrub) — the original HTML had this; would make the copy-lyrics feature even more meaningful.
+    51→    51→   250→   250→  2. Stats Finale: a "share my birthday in numbers" export — generates a styled summary card (image or text) of the stats for sharing.
+    52→    52→   251→   251→  3. Memory deck: a "reading mode" that flips cards one at a time in a focused full-screen overlay with prev/next navigation.
+    53→    53→   252→   252→  4. Love jar: export kept-thoughts as a printable PDF or shareable image.
+    54→    54→   253→   253→  5. Cake: a "birthday horoscope" — based on the sealed wish keywords, generate a playful "year ahead" reading.
+    55→    55→   254→   254→  6. Accessibility: a high-contrast theme variant + full screen-reader announcements for stat changes.
+    56→    56→   255→   255→  7. Performance: virtualize the wish album if it grows beyond 12 entries; prefetch dynamic chunks on hover.
+    57→    57→   256→   256→  8. Custom cursor: a small sparkle that follows the cursor (gated behind a toggle in FloatingControls, respects reduced-motion).
+    58→    58→   257→   257→
+    59→    59→   258→   258→---
+    60→    60→   259→   259→Task ID: webDevReview-round-4
+    61→    61→   260→   260→Agent: main (webDevReview cron)
+    62→    62→   261→   261→Task: Review worklog.md, perform QA via agent-browser, then independently add more style details and new features per the mandatory requirements.
+    63→    63→   262→   262→
+    64→    64→   263→   263→Work Log:
+    65→    65→   264→   264→- Reviewed prior worklog (3 sections, project stable).
+    66→    66→   265→   265→- Verified dev server up: `GET / 200` on http://localhost:3000/.
+    67→    67→   266→   266→- agent-browser QA (desktop 1440×900, mobile 390×844):
+    68→    68→   267→   267→  - Pre-feature QA: 0 console errors, 0px horizontal overflow on mobile, all 8 sections rendered, all interactions (memory flip, jar draw, compliment pluck, vinyl play, candle blow, stats increment, dark mode toggle) functional.
+    69→    69→   268→   268→  - No bugs to fix — proceeded to feature/style additions.
+    70→    70→   269→   269→- Implemented 3 new features:
+    71→    71→   270→   270→  1. **Wish Horoscope** (Cake section): `src/components/birthday/WishHoroscope.tsx` + `horoscopeKeywords` / `horoscopeFallback` data in `birthday-data.ts`. After candles are blown and the wish is sealed, a tarot-card-style "Year Ahead" reading appears below the sealed wish. The reading is generated by matching keywords in the wish text (love, joy, peace, success, health, travel, family, learn, money) to one of 9 themed readings; if no keywords match, falls back to 4 default readings. Includes a "Draw another reading" reroll button (cycles through matched/fallback set with a seed), rotating ornamental conic-gradient aura, corner flourishes, accent-colored glyph, and `pulse-reveal` soft glow on mount. Parent passes `key={sealedWish}` so the horoscope remounts cleanly on each new seal.
+    72→    72→   271→   271→  2. **Memory Reading Mode** (MemoryDeck): New full-screen overlay triggered by an "expand" icon button on the back of any flipped memory card. Shows the current memory with large serif typography, a starfield backdrop (36 twinkling stars), corner flourishes, prev/next navigation buttons, a progress-dot indicator, and a chapter counter. Keyboard navigation: ArrowLeft/ArrowRight to move between memories, Escape to close. Body scroll is locked while open. Click-outside-to-close on the backdrop. Each navigation triggers a soft chime.
+    73→    73→   272→   272→  3. **Sparkle Cursor** (`SparkleCursor.tsx` + FloatingControls toggle): New toggle button in FloatingControls (between ambient music and theme) — when on, a soft amber glow with an inner core follows the cursor with smooth lag-follow, emits periodic micro-sparkles (gold/rose) at the cursor position, and bursts 6 gold sparkles on click. Respects `prefers-reduced-motion` (silently disabled) and only activates on devices with `pointer: fine` (mouse). Preference persists in `localStorage` (`heena:sparkle-cursor`). Toggleable via button click or new `C` keyboard shortcut (documented in the `?` shortcuts panel).
+    74→    74→   273→   273→- Added many style details (mandatory):
+    75→    75→   274→   274→  - **Section dividers**: New `SectionDivider.tsx` component with ornamental glyph + shimmer-animated lines, inserted between every section (6 dividers total). Each picks a distinct glyph by index.
+    76→    76→   275→   275→  - **Vinyl ambient star field**: 28 twinkling stars in the vinyl section background (`.vinyl-star-field` + `@keyframes vinyl-star-twinkle`).
+    77→    77→   276→   276→  - **Footer wax seal**: Decorative embossed circular wax-seal stamp with monogram "H", radial-gradient body, inset highlight/shadow, dashed inner border, and a slow-rotating dotted outer ring (`.wax-seal-stamp` + `.wax-seal-rotate`).
+    78→    78→   277→   277→  - **Hero floating ornaments**: 4 slow-drifting glyph ornaments (`✦ ❋ ✺ ❖`) added to the hero background with `hero-ornament-drift` animation distinct from the existing `glyph-bob`.
+    79→    79→   278→   278→  - **Cake arch**: Decorative row of 7 ornamental glyphs above the cake SVG, gently swaying (`cake-arch-sway`).
+    80→    80→   279→   279→  - **Memory card sheen**: Iridescent sweep across the back of memory cards on hover/focus (`.memory-sheen`).
+    81→    81→   280→   280→  - **Reading-mode starfield**: 36 twinkling stars in the reading-mode backdrop (`.reading-star` + `reading-star-twinkle`).
+    82→    82→   281→   281→  - **Pulse-reveal**: Soft expanding-ring glow on the horoscope reveal.
+    83→    83→   282→   282→  - **CSS class aliases**: Added `.corner-flourish-{tl,tr,bl,br}` compound-class aliases so the existing corner-flourish styles work with my new hyphenated naming.
+    84→    84→   283→   283→  - **Dark-mode variants** for all new elements (dividers, ornaments, vinyl stars, cake arch, kbd).
+    85→    85→   284→   284→  - **Reduced-motion neutralization** extended to all new infinite animations.
+    86→    86→   285→   285→  - **`focus-ring-visible`** helper class for accessible focus rings on interactive card elements.
+    87→    87→   286→   286→  - **`no-scrollbar`** utility for the wish album.
+    88→    88→   287→   287→- Two lint errors fixed during the round:
+    89→    89→   288→   288→  - `SparkleCursor.tsx`: `setReduced(reducedMotion)` inside useEffect → refactored to compute capability flags once via `useState` initializer (SSR-safe), eliminating the synchronous setState. Also fixed a stale-closure bug (the `visible` dependency on the effect caused re-subscription on every visibility change → refactored to use a `visibleRef` + dedicated sync effect).
+    90→    90→   289→   289→  - `WishHoroscope.tsx`: `setSeed(0)` / `setRevealed(false)` inside useEffect on `wish` change → removed the effect entirely; parent now passes `key={sealedWish}` to remount the component on each new seal, and the reveal animation runs once per mount via a clean `setTimeout` effect.
+    91→    91→   290→   290→- Updated `KeyboardShortcuts.tsx`: added `C` shortcut for sparkle-cursor toggle, documented in the `?` hint panel.
+    92→    92→   291→   291→
+    93→    93→   292→   292→Stage Summary:
+    94→    94→   293→   293→- `bun run lint` → clean (0 errors, 0 warnings).
+    95→    95→   294→   294→- Dev server compiles cleanly, `GET / 200`.
+    96→    96→   295→   295→- agent-browser desktop QA confirmed:
+    97→    97→   296→   296→  - All 6 section dividers render. ✓
+    98→    98→   297→   297→  - 4 hero floating ornaments render. ✓
+    99→    99→   298→   298→  - 28 vinyl stars render. ✓
+   100→   100→   299→   299→  - Footer wax seal renders. ✓
+   101→   101→   300→   300→  - Cake arch renders above cake. ✓
+   102→   102→   301→   301→  - Memory card back has iridescent sheen on hover. ✓
+   103→   103→   302→   302→  - Reading mode: dialog opens via expand icon, ArrowRight cycles (Chapter 01 → 02), ArrowLeft moves back, Escape closes. ✓
+   104→   104→   303→   303→  - Wish horoscope: appears after blowing candles, "Draw another reading" rerolls (seed increments), `pulse-reveal` glow on mount. ✓
+   105→   105→   304→   304→  - Keyword matching verified: wish "a wish for love and joyful adventures" → reading title "A Season of Tenderness" (season: "spring of the heart"). ✓
+   106→   106→   305→   305→  - Sparkle cursor: toggle button works (aria-pressed toggles), `C` keyboard shortcut toggles, persisted in localStorage. ✓
+   107→   107→   306→   306→  - Dark mode: all new elements (ornaments, vinyl stars, dividers, wax seal, horoscope, reading overlay) adapt. ✓
+   108→   108→   307→   307→  - No console errors throughout all interactions. ✓
+   109→   109→   308→   308→- agent-browser mobile QA confirmed:
+   110→   110→   309→   309→  - 0px horizontal overflow. ✓
+   111→   111→   310→   310→  - Wish horoscope renders correctly at 390×844. ✓
+   112→   112→   311→   311→  - 0 console errors. ✓
+   113→   113→   312→   312→
+   114→   114→   313→   313→Unresolved Issues or Risks, and Priority Recommendations for the Next Phase
+   115→   115→   314→   314→- **Sparkle cursor on touch devices**: silently disabled (only activates on `pointer: fine`). This is by design — a sparkle cursor doesn't make sense on touch.
+   116→   116→   315→   315→- **Reading mode + sparkle interaction**: When reading mode is open (z-[80]), sparkle bursts from the `S` shortcut fire behind the dialog (SparkleCanvas is at root). Minor cosmetic; not blocking. Could be fixed by raising the canvas z-index when reading mode is open if desired.
+   117→   117→   316→   316→- **Horoscope keyword matching is English-only**: Keywords are English words. A multilingual wish would fall back to the default readings. Acceptable for the current single-audience card.
+   118→   118→   317→   317→- **Reading mode scroll lock**: Uses `document.body.style.overflow = hidden`. If a future overlay also locks scroll, ensure they coordinate (currently the only overlay that locks scroll).
+   119→   119→   318→   318→- **Recommended next-phase features** (in priority order):
+   120→   120→   319→   319→  1. **Stats export card** (StatsFinale): generate a styled summary card (PNG via canvas or shareable text) of the user's birthday stats — "your birthday in numbers" — for sharing.
+   121→   121→   320→   320→  2. **Vinyl: real audio + .lrc upload**: support user-uploaded audio files + .lrc lyrics for true scrub/sync, replacing the procedural melody. The "copy lyrics" feature would become even more meaningful.
+   122→   122→   321→   321→  3. **Love jar: export kept-thoughts** as a printable PDF or shareable image.
+   123→   123→   322→   322→  4. **Memory deck: "reading mode" gesture support** — swipe left/right on touch devices to navigate (currently only button + keyboard).
+   124→   124→   323→   323→  5. **Accessibility**: add a high-contrast theme variant; add screen-reader announcements for stat increments and reading-mode navigation.
+   125→   125→   324→   324→  6. **Performance**: virtualize the wish album if it grows beyond 12 entries; prefetch the VinylPlayer dynamic chunk on hover.
+   126→   126→   325→   325→  7. **Wish horoscope: sentiment-based fallback** — if no keyword matches, sample from fallbacks based on the wish length / sentiment (short wish → "second wind", long wish → "becoming").
+   127→   127→   326→   326→
+   128→   128→   327→   327→---
+   129→   129→   328→   328→
+   130→   130→   329→   329→## Round 5 — Scheduled webDevReview (cron #215324)
+   131→   131→   330→   330→
+   132→   132→   331→   331→**Task ID**: 5
+   133→   133→   332→   332→**Agent**: main (webDevReview)
+   134→   134→   333→   333→**Task**: Assess status via agent-browser QA, then add more styling details + more features per the mandatory requirements.
+   135→   135→   334→   334→
+   136→   136→   335→   335→### Work Log
+   137→   137→   336→   336→- Read prior worklog (R1–R4, 326 lines); confirmed project stable and fully functional across 4 prior rounds.
+   138→   138→   337→   337→- Pre-feature QA via agent-browser (desktop 1440×900): intro → enter → all 8 sections render; no console errors; no horizontal overflow (scrollW=1440=innerW); scrollH=11262. VLM review of all sections: polish 8–9/10, no visual bugs.
+   139→   139→   338→   338→- **No bugs to fix** — proceeded to feature/style additions per the mandatory requirements.
+   140→   140→   339→   339→
+   141→   141→   340→   340→#### New Features
+   142→   142→   341→   341→1. **Stats Export Card (PNG keepsake)** — `src/components/birthday/StatsExportCard.tsx` + integrated into `StatsFinale`. Generates a 1080×1350 PNG "birthday in numbers" keepsake entirely client-side via HTML5 Canvas (no external assets). The card has: aurora-wash gradient background, double-rule ornamental border with art-deco corner flourishes, gradient "For Heena" title, 2×4 stat grid with per-card glass panels + accent glows + gradient numbers + letter-spaced labels, footer divider + signature + date + monogram stamp. Two buttons: "download keepsake" (saves PNG via `<a download>`) and "share keepsake" (uses `navigator.share({files})` when available, falls back to download + clipboard URL). Toast notification "keepsake sealed — check your downloads" appears on download. Rainbow sparkle + high chime on success. Spinner state during canvas render.
+   143→   143→   342→   342→2. **Memory Deck touch swipe gestures** — Reading mode overlay now supports touch swipe left/right to navigate between memories (in addition to existing keyboard arrows + button controls). Swipe detection requires horizontal-dominant motion (>50px, <800ms, |dx| > |dy|×1.4) to avoid accidental triggers on vertical scrolls. Navigation hint updated to "← → or swipe to navigate · Esc to close".
+   144→   144→   343→   343→3. **Love Jar favorites + share kept thoughts** — Each kept-thought entry now has a ★/☆ favorite toggle button. Favorited thoughts get a rose-tinted background + ring, and a live "★ N" badge appears in the tray header. A "share" button in the tray header compiles favorites (or all kept if no favorites) into a formatted text list ("Kept thoughts for Heena ✦" + numbered list + "— gathered with love") and uses `navigator.share`/clipboard. Rainbow sparkle + chime on share; rose sparkle + chime on favorite. Glass toast "kept thoughts gathered — share them with someone you love" appears.
+   145→   145→   344→   344→4. **Wish Horoscope sentiment-based fallback** — When no keywords match the sealed wish, the fallback reading is now selected by sentiment heuristics rather than pure rotation: very short wish (<20 chars) → "second wind"; long wish (>90 chars) → "becoming"; punctuation-rich (? or !) → "kind mirror"; future-tense words ("will", "hope", "dream", "someday"…) → "small brave steps". The sentiment bucket is interleaved with the full fallback set so re-rolling still cycles through more readings.
+   146→   146→   345→   345→
+   147→   147→   346→   346→#### Styling Enhancements
+   148→   148→   347→   347→5. **SectionHeader component** — `src/components/birthday/SectionHeader.tsx`. A reusable, premium section banner with: a circular numbered art-deco badge (gradient fill + inner highlight + rotating dotted outer ring + flanking gradient rules), an eyebrow label with accent-colored divider lines, a large serif title (accepts React nodes for gradient spans), an optional subtitle, and an animated aurora-gradient wash behind the heading (radial blooms in the section's accent color, blurred + drift-animated). Five accent themes (amber/rose/violet/emerald/sky). Applied to all 6 main sections: Timeline (01), Memory Deck (02), Love Jar (03), Compliments (04), Vinyl Player (05), Cake (06), Stats Finale (07) — providing editorial progression and visual consistency.
+   149→   149→   348→   348→6. **Vinyl groove pulse rings** — Three expanding concentric amber rings around the vinyl record while playing (staggered 1.1s delays, 3.2s ease-out scale 0.92→1.35 + fade). Renders only when `playing` is true. Respects `prefers-reduced-motion`.
+   150→   150→   349→   349→7. **Stat card 3D tilt** — Each stat card in StatsFinale now has a pointer-driven 3D tilt (rotateX/rotateY following the cursor, ±12–14°) with `translateZ` depth on the glyph/value/label for a parallax effect, plus an edge-sheen that appears on tilt. Replaces the previous flat `whileHover` scale.
+   151→   151→   350→   350→8. **Aurora banner utility** — `.aurora-banner` CSS class with `aurora-drift` keyframe (14s ease-in-out alternate, translateX + scale + opacity oscillation), `filter: blur(28px)`, dark-mode opacity reduction.
+   152→   152→   351→   351→9. **Premium page scrollbar** — Replaced the default scrollbar with an ornate amber→rose gradient thumb on a cream gradient track (12px wide, rounded, padding-clip). Dark-mode variant included.
+   153→   153→   352→   352→10. **Art-deco corner brackets** — `.art-deco-corners` and `.art-deco-corners-full` (with `.corner-bracket.tl/tr/bl/br` children) utility classes for ornamental L-shaped border accents on premium cards.
+   154→   154→   353→   353→11. **Reduced-motion neutralization** extended to the new aurora-banner and vinyl-groove-ring animations.
+   155→   155→   354→   354→
+   156→   156→   355→   355→#### Lint / Build
+   157→   157→   356→   356→- One lint error during round: `MemoryDeck.tsx` `handleTouchEnd` useCallback had empty deps but used `setReadingIndex` → React Compiler flagged inferred-vs-source mismatch. Fixed by adding `setReadingIndex` to deps (it's a stable state setter). Final `bun run lint` → clean (0 errors, 0 warnings).
+   158→   158→   357→   357→
+   159→   159→   358→   358→### Stage Summary / Verification Results
+   160→   160→   359→   359→- `bun run lint` → clean (0 errors, 0 warnings).
+   161→   161→   360→   360→- Dev server compiles cleanly, `GET / 200`.
+   162→   162→   361→   361→- agent-browser desktop QA (1440×900) confirmed:
+   163→   163→   362→   362→  - All 6 SectionHeader instances render with numbered badges (01–07) + aurora wash + eyebrow + title. ✓
+   164→   164→   363→   363→  - Stats export card: "download keepsake" + "share keepsake" buttons render; clicking download fires canvas draw + triggers PNG download + shows toast (toast text confirmed in DOM). ✓
+   165→   165→   364→   364→  - Love jar: draw 3 thoughts → tray appears; favorite toggle (☆→★) works; ★ count badge appears; share button fires rainbow sparkle. ✓
+   166→   166→   365→   365→  - Memory reading mode: opens via expand button; ArrowRight navigates Chapter 01 → 02; Escape closes; hint text now "← → or swipe to navigate". ✓
+   167→   167→   366→   366→  - Vinyl: clicking play spins vinyl + 3 amber pulse rings expand outward; waveform animates; volume + seek controls present. ✓
+   168→   168→   367→   367→  - Stat cards: 3D tilt follows cursor with parallax depth; edge sheen appears on hover. ✓
+   169→   169→   368→   368→  - Dark mode: numbered badges + aurora wash + all new elements adapt cleanly; readability excellent. ✓
+   170→   170→   369→   369→  - No console errors throughout all interactions. ✓
+   171→   171→   370→   370→  - No horizontal overflow (scrollW=1440=innerW). ✓
+   172→   172→   371→   371→- agent-browser mobile QA (390×844) confirmed:
+   173→   173→   372→   372→  - No horizontal overflow (scrollW=390=innerW). ✓
+   174→   174→   373→   373→  - Numbered section badges visible. ✓
+   175→   175→   374→   374→  - Stat cards stack 2-column. ✓
+   176→   176→   375→   375→  - 0 console errors. ✓
+   177→   177→   376→   376→- VLM (glm-4.6v) reviews:
+   178→   178→   377→   377→  - Section headers (timeline, memory, jar): "Numbered badges visible and well-styled, distinct colors, clear numbering; no major visual bugs; polish 8/10".
+   179→   179→   378→   378→  - Stats section header: "circular '07' badge present, 'A little ledger of today' visible, aurora gradient wash behind heading".
+   180→   180→   379→   379→  - Dark mode: "Background dark ✓, numbered badges visible ✓, aurora gradient visible ✓, text readable ✓, polish 9/10".
+   181→   181→   380→   380→  - Mobile: "No horizontal overflow ✓, numbered badges visible ✓, stat cards 2-column ✓, polish 9/10".
+   182→   182→   381→   381→  - Reading mode: "Full-screen dark overlay with centered card ✓, corner flourishes ✓, large serif title ✓, prev/next buttons ✓, star field background ✓".
+   183→   183→   382→   382→  - Vinyl playing: "Vinyl record visible ✓, 3 amber expanding pulse rings ✓, waveform animating ✓, volume + seek controls visible ✓".
+   184→   184→   383→   383→  - Love jar with favorites: "Kept thoughts tray with 3 entries ✓, 1 entry has gold star ✓, share/clear buttons present ✓, no visual bugs".
+   185→   185→   384→   384→
+   186→   186→   385→   385→### Unresolved Issues or Risks, and Priority Recommendations for the Next Phase
+   187→   187→   386→   386→- **Harmless dev warning**: framer-motion `useScroll` container-position warning persists in dev (sections are `relative`). Non-blocking; cosmetic only.
+   188→   188→   387→   387→- **Vinyl audio is still procedural** (Web Audio synth, no real audio files). The PNG keepsake + lyrics copy + scrubbing all work, but real audio + `.lrc` upload remains a future enhancement.
+   189→   189→   388→   388→- **Clipboard API in headless test**: `navigator.clipboard.writeText` may fail in agent-browser (no clipboard permission); the toast may not appear in QA screenshots but the sparkle + chime feedback always fires. In a real browser with a user gesture, both succeed.
+   190→   190→   389→   389→- **Stats export PNG**: rendered procedurally via Canvas (no font embedding), so the keepsake uses browser-default serif/sans-serif fonts rather than the loaded Google Fonts. The visual style is still premium (gradient title, glass panels, ornamental border). A future enhancement could embed the Google Fonts in the canvas via `document.fonts.ready` + `FontFace.load`.
+   191→   191→   390→   390→- **Reading-mode + sparkle interaction**: When reading mode is open (z-[80]), sparkle bursts from the `S` shortcut fire behind the dialog (SparkleCanvas is at root). Minor cosmetic; not blocking.
+   192→   192→   391→   391→- **Recommended next-phase features** (in priority order):
+   193→   193→   392→   392→  1. **Vinyl: real audio + .lrc upload** — support user-uploaded audio files + .lrc lyrics for true scrub/sync, replacing the procedural melody. The "copy lyrics" feature would become even more meaningful.
+   194→   194→   393→   393→  2. **Memory deck: per-card glyph theme colors** — each memory card's chapter glyph could pick up a distinct accent gradient (currently all amber).
+   195→   195→   394→   394→  3. **Compliments garden: "grow a new compliment"** — let the user type their own compliment and watch it float up into the garden alongside the curated set.
+   196→   196→   395→   395→  4. **Cake: a "year ahead" companion card** that pairs with the WishHoroscope — a short list of "things to try this year" based on the wish keywords.
+   197→   197→   396→   396→  5. **Stats export: embed Google Fonts in canvas** so the keepsake uses the exact same Playfair Display + Plus Jakarta Sans typography as the site.
+   198→   198→   397→   397→  6. **Accessibility**: a high-contrast theme variant; screen-reader announcements for stat increments and reading-mode navigation.
+   199→   199→   398→   398→  7. **Performance**: prefetch the VinylPlayer dynamic chunk on hover; virtualize the wish album if it grows beyond 12 entries.
+   200→   200→   399→   399→
+   201→   201→   400→   400→---
+   202→   202→   401→   401→
+   203→   203→   402→   402→## Round 6 — Scheduled webDevReview (cron #215324)
+   204→   204→   403→   403→
+   205→   205→   404→   404→**Task ID**: 6
+   206→   206→   405→   405→**Agent**: main (webDevReview)
+   207→   207→   406→   406→**Task**: Assess status via agent-browser QA, then add more styling details + more features per the mandatory requirements.
+   208→   208→   407→   407→
+   209→   209→   408→   408→### Work Log
+   210→   210→   409→   409→- Read prior worklog (R1–R5, 399 lines); confirmed project stable and fully functional across 5 prior rounds.
+   211→   211→   410→   410→- Pre-feature QA via agent-browser (desktop 1440×900, mobile 390×844): intro → enter → all 8 sections render; no console errors; no horizontal overflow (desktop scrollW=1440=innerW; mobile scrollW=390=innerW); scrollH desktop 12559. Theme toggle, memory flip, candle blow, stats increment all verified functional. VLM spot-checks of hero/timeline/memory/jar/compliments/vinyl/cake/stats/footer all clean.
+   212→   212→   411→   411→- **No bugs to fix** — proceeded to feature/style additions per the mandatory requirements.
+   213→   213→   412→   412→
+   214→   214→   413→   413→#### New Features
+   215→   215→   414→   414→1. **Birthday Poem Composer** (`src/components/birthday/PoemComposer.tsx` + integrated into `StatsFinale`). A new full-screen overlay dialog triggered by a "Compose a poem" button (placed next to "Celebrate once more" in the StatsFinale footer). Features:
+   216→   216→   415→   415→   - 5 mood presets: **Tender** (rose), **Joyful** (amber), **Cosmic** (violet), **Cozy** (emerald), **Grateful** (sky) — each with its own gradient + glyph.
+   217→   217→   416→   416→   - A name input (defaults to "Heena", max 24 chars).
+   218→   218→   417→   417→   - Composes a deterministic-but-varied 8-line personalized poem by sampling one entry from each of 8 line-pools per mood (32 unique lines × 5 moods = 160 line variants). The composer uses a per-line seed (`seed*7 + i*13 + i*i`) so successive lines don't pick the same offset, then `{name}` placeholders are replaced.
+   219→   219→   418→   418→   - "Compose again" button regenerates the poem with a new seed (same mood).
+   220→   220→   419→   419→   - Each line is individually clickable (with hover copy-button affordance) → copies just that line. Plus a "copy the poem" button copies the full 8-line poem with header "For {name} ✦" and footer "— composed with love, on your day".
+   221→   221→   420→   420→   - Animated **poem-aura** behind the card (radial amber/rose/violet blooms, blurred, breathing).
+   222→   222→   421→   421→   - **Line-by-line reveal** — each line fades + slides in with a 0.12s stagger.
+   223→   223→   422→   422→   - Body scroll lock + Escape to close + click-outside-to-close on backdrop.
+   224→   224→   423→   423→   - Rainbow sparkle (26) + chime on every compose/regenerate; gold sparkle + chime on per-line copy; rainbow sparkle + chime on full-poem copy. Increments `sparklesFired` stat.
+   225→   225→   424→   424→2. **Grow-a-Compliment** (`ComplimentsSection.tsx`). The compliments garden now supports user-authored compliments:
+   226→   226→   425→   425→   - "Grow your own compliment" pill button below the garden box → expands an inline input (80-char limit, live counter, Enter to plant, Escape to cancel).
+   227→   227→   426→   426→   - Planted compliments float up into the garden as a violet-tinted chip with a ✶ marker (distinct from the curated chips), pluckable like the others.
+   228→   228→   427→   427→   - Persists to `localStorage` (`heena:custom-compliments`); on reload, custom compliments hydrate alongside the curated set. A "N planted" badge appears on the toggle button when any custom compliments exist.
+   229→   229→   428→   428→   - Rainbow sparkle (18) + high chime on plant; increments `sparklesFired` stat. Refill ("Grow them back") now restores custom compliments too.
+   230→   230→   429→   429→3. **Memory Deck per-card accent colors** (`birthday-data.ts` + `MemoryDeck.tsx`). Each of the 6 memory cards now has a distinct accent gradient applied to its glyph, divider line, "tap to reveal" rotation icon, chapter label, and the reading-mode card itself:
+   231→   231→   430→   430→   - Ch 01 rose, Ch 02 amber, Ch 03 violet, Ch 04 emerald, Ch 05 sky, Ch 06 gold.
+   232→   232→   431→   431→   - Driven by a new `glyphAccent` field on the `MemoryCard` type + a corresponding `.accent-{color}` CSS class that sets `--card-accent` and `--card-accent-soft` CSS variables (with dark-mode variants). Inline `style={{ color: "var(--card-accent)" }}` reads these.
+   233→   233→   432→   432→   - Verified via `getComputedStyle`: all 6 glyphs now render in their distinct accent colors (was previously a single amber-600 for all).
+   234→   234→   433→   433→4. **Vinyl lyric-line click-to-seek** (`VinylPlayer.tsx`). Each lyric line in the lyrics panel is now a clickable button that seeks playback to that line's timestamp + re-syncs the active lyric highlight. Adds `role="button"`, `tabIndex=0`, keyboard support (Enter/Space), title tooltip "Jump to {first 24 chars}…", and a small gold sparkle on click. Complements the existing seek-bar scrub.
+   235→   235→   434→   434→
+   236→   236→   435→   435→#### Styling Enhancements
+   237→   237→   436→   436→5. **Hero side-rail flourishes** — two vertical art-deco rules (left + right of the hero, `hidden md:block` so mobile keeps full width) with a gradient (transparent → amber → rose → amber → transparent), small radial dots at top + bottom, and a centered glyph (✦ left, ❋ right) that gently pulses. The glyph has the body background color so the rail appears to "pass through" it.
+   238→   238→   437→   437→6. **LoveJar glass sheen** — a `.jar-sheen` overlay on the jar container that runs a `jar-sheen-sweep` 6.5s animation: a slanted bright sliver of light sweeps diagonally across the jar glass every 6.5s, creating a premium "lit-from-within" effect. Dark-mode variant uses an amber-tinted sweep.
+   239→   239→   438→   438→7. **Eyebrow letterpress** — `.eyebrow-letterpress` utility with a dual-direction text-shadow (light-from-top, dark-from-bottom) for a subtle embossed/letterpress feel. (Class is available for future use; current SectionHeader already has its own treatment.)
+   240→   240→   439→   439→8. **Memory card chapter gold-foil underline** — `.chapter-foil-underline` utility adds an animated gold-foil gradient underline beneath each chapter label that scales in from left on `.group:hover`/`.group:focus-visible` and then continuously shimmers via the `foil-shimmer` keyframe (background-position sweep). The underline uses a multi-stop gradient (transparent → amber → rose → amber → transparent).
+   241→   241→   440→   440→9. **Stats grid radial spotlight** — a `.stats-spotlight` overlay behind the StatsFinale grid: two large blurred radial blooms (amber top-left, rose bottom-right) that add warmth and depth to the grid. Dark-mode variant uses reduced opacity.
+   242→   242→   441→   441→10. **Stat card constellation hover** — each stat card now shows a tiny constellation of 4 twinkling dots + a connecting line above the card on hover, color-matched to the card's accent. Adds a "data points" premium feel.
+   243→   243→   442→   442→11. **Reading-mode page-turn** — `.reading-page-turn` wrapper class ready for slide transitions between memories (the existing spring scale animation still runs; this class is positioned for future per-direction slide animation).
+   244→   244→   443→   443→12. **Poem composer aura + line reveal** — `.poem-aura` (breathing radial blooms) + `.poem-line` (line-by-line fade + slide reveal with staggered delay).
+   245→   245→   444→   444→13. **Dark-mode variants** for all new elements (side rails, jar sheen, accents, spotlight, constellation dots).
+   246→   246→   445→   445→14. **Reduced-motion neutralization** extended to all new infinite animations (hero rail glyph pulse, jar sheen sweep, garden breeze, poem aura, page-turn, stat constellation twinkle, foil shimmer).
+   247→   247→   446→   446→
+   248→   248→   447→   447→#### Bug Fixed During QA
+   249→   249→   448→   448→- **Per-card accent color not rendering**: initial implementation set `--card-accent: var(--card-accent)` as an inline style on the card wrapper — a circular reference that resolved to `unset`, causing all glyphs to inherit stone-800 instead of the per-card accent. Removed the redundant inline override; the `--card-accent` is now correctly set by the `.accent-{color}` class on the same element. Verified via `getComputedStyle`: all 6 glyphs now render in their distinct accent colors (rose #be123c, amber #b45309, violet #6d28d9, emerald #047857, sky #0369a1, gold #a16207).
+   250→   250→   449→   449→
+   251→   251→   450→   450→#### Lint / Build
+   252→   252→   451→   451→- One lint error during round: `idRef.v++` in `ComplimentsSection.growCompliment` — `idRef` was created via `useMemo(() => ({ v: 1000 }), [])`, and React Compiler flagged mutation of a useMemo value as `react-hooks/immutability`. Refactored to `useRef(1000)` + read-then-assign pattern (`const newId = idRef.current; idRef.current = idRef.current + 1`). Also moved the unused `useMemo` import to `useRef`.
+   253→   253→   452→   452→- Two `react-hooks/set-state-in-effect` warnings on the localStorage-hydrate effect — kept the targeted `eslint-disable-next-line` comment (canonical pattern, same as R2/R4).
+   254→   254→   453→   453→- One unused `eslint-disable` for `react-hooks/exhaustive-deps` in `PoemComposer` — removed by adding `incStat` to the dep array (it's a stable Zustand selector).
+   255→   255→   454→   454→- Final `bun run lint` → clean (0 errors, 0 warnings).
+   256→   256→   455→   455→
+   257→   257→   456→   456→### Stage Summary / Verification Results
+   258→   258→   457→   457→- `bun run lint` → clean (0 errors, 0 warnings).
+   259→   259→   458→   458→- Dev server compiles cleanly, `GET / 200`.
+   260→   260→   459→   459→- agent-browser desktop QA (1440×900) confirmed:
+   261→   261→   460→   460→  - Hero renders with **2 side-rail flourishes** (vertical lines with center ✦/❋ glyphs) on left + right edges. ✓
+   262→   262→   461→   461→  - Memory deck: all 6 cards now have **distinct accent colors** on their glyphs (verified via `getComputedStyle`: rose, amber, violet, emerald, sky, gold). ✓
+   263→   263→   462→   462→  - Memory card chapter label shows the **gold-foil underline** sweep on hover. ✓
+   264→   264→   463→   463→  - Love jar: `.jar-sheen` element present with `jar-sheen-sweep` animation running. ✓
+   265→   265→   464→   464→  - Compliments garden: "Grow your own compliment" button visible below the garden; clicking it expands the inline input; typing + Enter plants a violet-tinted chip with ✶ marker into the garden. ✓
+   266→   266→   465→   465→  - Vinyl: clicking a specific lyric line seeks playback to that line's timestamp + re-syncs the active highlight. ✓
+   267→   267→   466→   466→  - Stats finale: 8 stat cards in 2×4 grid; **radial spotlight** glow visible behind grid; both "Celebrate once more" AND "Compose a poem" buttons visible. ✓
+   268→   268→   467→   467→  - Stat cards: 8 `.stat-constellation` elements present (one per card), appear on hover. ✓
+   269→   269→   468→   468→  - Poem composer: clicking "Compose a poem" opens the overlay with 5 mood buttons (Tender/Joyful/Cosmic/Cozy/Grateful), name input (defaults "Heena"), 8-line poem with line-by-line reveal, "Compose again" + "copy the poem" buttons. Switching mood (Joyful) recomposes; "Compose again" regenerates with new seed; Escape closes. ✓
+   270→   270→   469→   469→  - Dark mode: all new elements (side rails, jar sheen, accents, spotlight, constellation, poem composer) adapt cleanly. ✓
+   271→   271→   470→   470→  - No console errors throughout all interactions. ✓
+   272→   272→   471→   471→  - No horizontal overflow (scrollW=1440=innerW). ✓
+   273→   273→   472→   472→- agent-browser mobile QA (390×844) confirmed:
+   274→   274→   473→   473→  - No horizontal overflow (scrollW=390=innerW). ✓
+   275→   275→   474→   474→  - Side rails hidden on mobile (md:block). ✓
+   276→   276→   475→   475→  - Poem composer renders correctly at mobile width. ✓
+   277→   277→   476→   476→  - Memory cards, stats grid, compliments garden all fit. ✓
+   278→   278→   477→   477→  - 0 console errors. ✓
+   279→   279→   478→   478→- VLM (glm-4.6v) reviews:
+   280→   280→   479→   479→  - Hero with side rails: "vertical side-rail art-deco flourishes with center glyphs are visible on both left and right edges; typography premium; no visual bugs; polish 9/10".
+   281→   281→   480→   480→  - Poem composer: "5 mood buttons visible with distinct colors; 8-line poem visible with line-by-line typography; 'Compose again' + 'copy the poem' buttons visible; no visual bugs; polish 9/10".
+   282→   282→   481→   481→  - Compliments garden: "floating compliment chips visible; 'Grow your own compliment' button visible below the garden; no visual bugs; polish 9/10".
+   283→   283→   482→   482→  - Stats grid: "8 stat cards in 2×4 grid; 'Celebrate once more' + 'Compose a poem' buttons visible; subtle spotlight glow behind grid; no visual bugs; polish 9/10".
+   284→   284→   483→   483→  - Memory deck: "glyphs shown in different accent colors (sky-blue for Ch 05, gold for Ch 06); polish 8/10".
+   285→   285→   484→   484→  - Love jar dark mode: "background dark; jar visible with appropriate contrast; text readable; polish 9/10".
+   286→   286→   485→   485→
+   287→   287→   486→   486→### Unresolved Issues or Risks, and Priority Recommendations for the Next Phase
+   288→   288→   487→   487→- **Harmless dev warning**: framer-motion `useScroll` container-position warning persists in dev (sections are `relative`). Non-blocking; cosmetic only.
+   289→   289→   488→   488→- **Vinyl audio is still procedural** (Web Audio synth, no real audio files). The new lyric-click-to-seek works against the mock clock. Real audio + `.lrc` upload remains a future enhancement.
+   290→   290→   489→   489→- **Clipboard API in headless test**: `navigator.clipboard.writeText` may fail in agent-browser (no clipboard permission); the per-line copy / full-poem copy / bouquet-copy toasts may not appear in QA screenshots but the sparkle + chime feedback always fires. In a real browser with a user gesture, both succeed.
+   291→   291→   490→   490→- **Poem composer lexicon is English-only**: 160 line variants across 5 moods, all English. A multilingual lexicon would be a future enhancement.
+   292→   292→   491→   491→- **Custom compliments persist but aren't counted in stats**: planting a custom compliment increments `sparklesFired` but not a dedicated "compliments grown" counter. The existing `complimentsPlucked` counter does increment when a custom chip is plucked, so the user's interactions with their own compliments are tracked.
+   293→   293→   492→   492→- **Recommended next-phase features** (in priority order):
+   294→   294→   493→   493→  1. **Vinyl: real audio + .lrc upload** — support user-uploaded audio files + .lrc lyrics for true scrub/sync, replacing the procedural melody. The "copy lyrics" + click-to-seek features would become even more meaningful.
+   295→   295→   494→   494→  2. **Poem composer: embed the user's sealed-wish keywords + plucked compliments into the poem** — currently the composer uses a fixed lexicon; sampling from the user's actual interactions would make each poem more personal.
+   296→   296→   495→   495→  3. **Memory deck: per-card back-side accent** — currently the back of every memory card uses the same dark gradient. The per-card accent could extend to a subtle accent-tinted glow on the back.
+   297→   297→   496→   496→  4. **Love jar: export kept-thoughts** as a printable PDF or shareable image (R3 leftover).
+   298→   298→   497→   497→  5. **Stats export: embed Google Fonts in canvas** so the keepsake PNG uses the exact Playfair Display + Plus Jakarta Sans typography (R4 leftover).
+   299→   299→   498→   498→  6. **Accessibility**: full keyboard navigation pass + visible focus rings on poem composer mood buttons; screen-reader announcements for poem line reveals.
+   300→   300→   499→   499→  7. **Performance**: prefetch the VinylPlayer dynamic chunk on hover; virtualize the wish album if it grows beyond 12 entries.
+   301→   301→
+   302→   302→[showing lines 200-499 of 812; use offset=500 with limit to continue reading]

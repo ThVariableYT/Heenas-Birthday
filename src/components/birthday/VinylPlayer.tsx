@@ -199,6 +199,139 @@ function RealtimeWaveform({ active }: { active: boolean }) {
   );
 }
 
+/**
+ * CircularSpectrum — a canvas ring that wraps around the vinyl record and
+ * renders the live frequency spectrum as radial bars. Reads
+ * `analyser.getByteFrequencyData()` (frequency domain — distinct from the
+ * waveform's time-domain) and draws bars radiating outward from the record's
+ * edge. Bars are tinted by an amber→rose→violet gradient that maps to the
+ * bar's amplitude, and the whole ring gently pulses in idle state so it
+ * never looks dead. This is the "the record is alive" visual cue.
+ */
+function CircularSpectrum({ active }: { active: boolean }) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const rafRef = useRef(0);
+  const phaseRef = useRef(0);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const SIZE = 320; // CSS px (square)
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.floor(SIZE * dpr);
+    canvas.height = Math.floor(SIZE * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    const analyser = getAnalyser();
+    // Use a smaller bin count for the circular viz — 64 bars look clean.
+    const BAR_COUNT = 64;
+    const buf = analyser ? new Uint8Array(analyser.frequencyBinCount) : null;
+
+    const render = () => {
+      const w = SIZE;
+      const h = SIZE;
+      const cx = w / 2;
+      const cy = h / 2;
+      const innerR = 132; // just outside the record edge
+      const maxBarLen = 24; // radial bar length range
+
+      ctx.clearRect(0, 0, w, h);
+
+      phaseRef.current += 0.018;
+      const phase = phaseRef.current;
+
+      if (!active || !analyser || !buf) {
+        // Idle — render a gentle pulsing ring of faint dots.
+        for (let i = 0; i < BAR_COUNT; i++) {
+          const angle = (i / BAR_COUNT) * Math.PI * 2 - Math.PI / 2;
+          const breath = 0.5 + 0.5 * Math.sin(phase + i * 0.2);
+          const len = 2 + breath * 3;
+          const x1 = cx + Math.cos(angle) * innerR;
+          const y1 = cy + Math.sin(angle) * innerR;
+          const x2 = cx + Math.cos(angle) * (innerR + len);
+          const y2 = cy + Math.sin(angle) * (innerR + len);
+          ctx.strokeStyle = `rgba(167, 139, 250, ${0.18 + breath * 0.18})`;
+          ctx.lineWidth = 1.4;
+          ctx.beginPath();
+          ctx.moveTo(x1, y1);
+          ctx.lineTo(x2, y2);
+          ctx.stroke();
+        }
+        rafRef.current = requestAnimationFrame(render);
+        return;
+      }
+
+      // Active — sample 64 bins spread across the lower 3/4 of the spectrum
+      // (the upper quarter is mostly inaudible highs on procedural audio).
+      analyser.getByteFrequencyData(buf);
+      const usableBins = Math.floor(buf.length * 0.75);
+      const stride = Math.max(1, Math.floor(usableBins / BAR_COUNT));
+
+      for (let i = 0; i < BAR_COUNT; i++) {
+        const angle = (i / BAR_COUNT) * Math.PI * 2 - Math.PI / 2;
+        // Average a small window for smoother bars.
+        let sum = 0;
+        let cnt = 0;
+        for (let j = 0; j < stride; j++) {
+          const idx = i * stride + j;
+          if (idx < buf.length) {
+            sum += buf[idx];
+            cnt++;
+          }
+        }
+        const avg = cnt ? sum / cnt : 0; // 0-255
+        const norm = avg / 255; // 0-1
+        const len = 2 + norm * maxBarLen;
+        const x1 = cx + Math.cos(angle) * innerR;
+        const y1 = cy + Math.sin(angle) * innerR;
+        const x2 = cx + Math.cos(angle) * (innerR + len);
+        const y2 = cy + Math.sin(angle) * (innerR + len);
+
+        // Gradient stroke by amplitude: amber → rose → violet
+        const r = Math.round(251 + (167 - 251) * norm);
+        const g = Math.round(191 + (139 - 191) * norm);
+        const b = Math.round(36 + (250 - 36) * norm);
+        const alpha = 0.55 + norm * 0.45;
+        ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
+        ctx.lineWidth = 2.2;
+        ctx.lineCap = "round";
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+
+        // Bright tip dot on loud bars.
+        if (norm > 0.4) {
+          ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${0.85})`;
+          ctx.beginPath();
+          ctx.arc(x2, y2, 1.4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      rafRef.current = requestAnimationFrame(render);
+    };
+    rafRef.current = requestAnimationFrame(render);
+
+    return () => {
+      cancelAnimationFrame(rafRef.current);
+    };
+  }, [active]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className="vinyl-circular-spectrum"
+      style={{ width: "320px", height: "320px" }}
+      aria-label={active ? "Circular audio spectrum — currently active" : "Circular audio spectrum — idle"}
+      role="img"
+    />
+  );
+}
+
 export default function VinylPlayer() {
   const [currentTrack, setCurrentTrack] = useState<Track | UploadedTrack | null>(null);
   const [uploaded, setUploaded] = useState<UploadedTrack | null>(null);
@@ -597,6 +730,12 @@ export default function VinylPlayer() {
           transition={{ duration: 0.6 }}
         >
           <div className="relative">
+            {/* Circular frequency spectrum — wraps around the vinyl record.
+                Absolutely positioned so the 320×320 canvas is centered on the
+                224×224 record, leaving 48px of spectrum ring visible outside. */}
+            <div className="vinyl-spectrum-wrap" aria-hidden>
+              <CircularSpectrum active={playing && !paused} />
+            </div>
             <div
               className={`vinyl-glow absolute -inset-3 rounded-full ${playing && !paused ? "playing" : ""}`}
               aria-hidden

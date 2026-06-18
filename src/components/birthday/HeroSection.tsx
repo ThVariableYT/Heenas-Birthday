@@ -169,7 +169,7 @@ export default function HeroSection() {
           onClick={burst}
           style={{ cursor: "pointer" }}
         >
-          <span className="relative inline-block">
+          <span className="relative inline-block hero-title-shimmer">
             <span
               className="bg-gradient-to-br from-amber-600 via-rose-500 to-amber-700 bg-clip-text text-transparent text-shadow-glow"
               style={{ transform: "translate(var(--px), var(--py))" }}

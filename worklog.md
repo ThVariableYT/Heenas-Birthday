@@ -809,3 +809,118 @@ Unresolved Issues or Risks, and Priority Recommendations for the Next Phase
   6. **Timeline: parallax depth** — add a subtle parallax tilt to timeline moment cards on mousemove (like the memory cards have), making the timeline feel more tactile.
   7. **Accessibility**: full keyboard navigation pass for the Wish Lantern Sky (focus trap on the sky log modal, screen-reader announcements for lantern release + count updates).
   8. **Performance**: the RealtimeWaveform canvas runs at 60fps via requestAnimationFrame; consider pausing it when the vinyl section is out of view (currently it keeps drawing the idle ripple).
+
+
+## Round 10 — Scheduled webDevReview (cron #215324)
+
+**Task ID**: 10
+**Agent**: main (webDevReview)
+**Task**: Assess status via agent-browser QA, then add more styling details + more features per the mandatory requirements.
+
+### Work Log
+- Read prior worklog (R1–R9, ~811 lines); confirmed project stable and fully functional across 9 prior rounds.
+- Pre-feature QA via agent-browser (desktop 1440×900): intro → enter → all 9 sections render; no console errors; no horizontal overflow (scrollW=1440=innerW); scrollH=14162 (R9 baseline). Theme toggle, memory flip, love jar draw, candle blow all functional.
+- **No bugs to fix** — proceeded to feature/style additions per the mandatory requirements.
+
+#### New Features
+1. **Vinyl circular frequency spectrum visualizer** (`VinylPlayer.tsx` + `globals.css`). A new `CircularSpectrum` canvas component placed behind the vinyl record, wrapping it in a ring of audio-reactive frequency bars. Features:
+   - **64 radial bars** drawn with `analyser.getByteFrequencyData()` (frequency domain — distinct from the existing time-domain `RealtimeWaveform`). Bars radiate outward from `innerR=132px` (just outside the 224px record's edge) up to 24px in length.
+   - **Amplitude-tinted gradient** — each bar's color interpolates from amber (#fbbf24) at low amplitude → rose (#fb7185) → violet (#a78bfa) at peak, with a bright tip dot on loud bars (norm > 0.4).
+   - **Idle state** — gentle pulsing ring of faint violet dots that "breathe" so the canvas never looks dead.
+   - **Spectrum wrap** — absolutely positioned (`top:50%; left:50%; translate(-50%, -50%)`) so the 320×320 canvas is centered on the 224×224 record button, leaving 48px of spectrum visible outside the record edge.
+   - **Mobile responsive** — shrinks to 260×260 below 640px.
+   - **`mix-blend-mode: screen`** + amber drop-shadow for a luminous halo effect.
+   - **Reduced-motion** — opacity drops to 0.4 under `prefers-reduced-motion`.
+   - **Accessibility** — `role="img"` + dynamic `aria-label` ("Circular audio spectrum — currently active / idle").
+   - Verified end-to-end: clicked play → canvas switched from idle to active → aria-label updated → VLM (glm-4.6v) confirmed "circular ring of audio spectrum bars around the vinyl record" with "orange (warm tone)" bars.
+
+2. **Wish Lantern constellation mode** (`WishLanternSky.tsx` + `globals.css`). After 3+ lanterns are released, an SVG heart-shaped constellation fades in above the input card. Features:
+   - **Parametric heart curve** — uses the classic heart parametric `x=16·sin³(t), y=-(13·cos(t)-5·cos(2t)-2·cos(3t)-cos(4t))` to place 3–14 nodes around a heart outline (capped at 14).
+   - **Two-pass stroke** — (1) a thin (0.5 unit) bright amber→rose→violet gradient line at 0.75 opacity, plus (2) a wider (1.8 unit) blurred glow pass at 0.4 opacity for a luminous halo.
+   - **`pathLength` animation** — both paths draw from 0→1 over 2.2s with `easeInOut`, so the heart traces itself into existence.
+   - **Star markers** — each node gets a radial-gradient circle (cream→amber→transparent) that springs in with a staggered delay (0.6s + i·0.12s).
+   - **"your wishes formed a heart" label** — a glass pill below the constellation with amber text + glow, fading in 1.4s after the constellation.
+   - **Toggle control** — a glass "hide constellation / show constellation" button appears once 3+ lanterns are released.
+   - **Session + persistent count** — constellation shows whenever `max(sessionReleases, releasedCount) >= 3`, so returning visitors with prior releases still see it.
+   - Verified end-to-end: seeded 3 lantern records → constellation heart rendered with star markers + label → VLM confirmed "heart-shaped constellation clearly visible with glowing lines and star markers" + "your wishes formed a heart" label + both control buttons. Polish 8/10.
+
+3. **Wish Lantern PNG keepsake export** (`WishLanternSky.tsx`). A "save the sky (png)" button (amber-gradient glass pill) that renders all released wishes to a downloadable 800×1000 PNG. Features:
+   - **Hand-painted night-sky canvas** — deep indigo→violet→black gradient + 2 atmospheric haze radial gradients (violet + rose) + 120 deterministic stars (30% "bright" with cross-glow) + mountain silhouette SVG path at the bottom.
+   - **Typography** — "Wishes in the Sky" title (42px bold Georgia), "✦ for Heena ✦" subtitle (20px italic amber), ornamental divider with ✦ glyph, wishes as italic 18px Georgia with lantern 🏮 bullets, timestamps in 10px monospace violet.
+   - **Wish wrapping** — each wish is word-wrapped to fit `W-140`px, capped at 2 lines with ellipsis.
+   - **Footer** — "released with love · N wishes · [date]" + "a birthday composed in code" tagline.
+   - **Download** — `canvas.toBlob()` → `URL.createObjectURL()` → temporary `<a download="heena-wishes-in-the-sky.png">` → click → revoke.
+   - **Celebration** — rainbow sparkle burst + E5 chime on export.
+   - **Loading state** — button shows "◌ preparing…" for 800ms while rendering.
+   - Verified end-to-end: clicked export → PNG downloaded to ~/Downloads → VLM confirmed "starry night-sky background" + "title 'Wishes in the Sky' with 'for Heena' subtitle" + "3 wishes shown as a list with lantern bullets" + "footer with release count". No visual issues.
+
+#### Styling Enhancements
+4. **Upgraded SectionDivider** (`SectionDivider.tsx` + `globals.css`). Replaced the simple line-glyph-line divider with an elaborate animated ornament. Features:
+   - **8 unique hand-crafted SVG ornaments** — `OrnamentFiligree` (art-deco fan), `OrnamentVine` (curving vine with leaves), `OrnamentDotPattern` (diamond of dots), `OrnamentSunburst` (mini sun with 8 rays), `OrnamentChevron` (inward chevrons), `OrnamentWave` (triple wave with droplets), `OrnamentHeart` (heart with side flourishes), `OrnamentNote` (eighth note on staff). Each divider picks 2 different ornaments (left + right) based on its index.
+   - **Per-divider accent color** — 8-color palette (amber, rose, violet, emerald, sky, gold, pink, indigo) applied via CSS custom property `--divider-accent`.
+   - **Beaded line** — 5 small glowing dots (`divider-bead`) between the line and the ornament, staggered in with 0.08s delays.
+   - **Line grow animation** — `divider-line-wrap` scales from 0→1 on scroll-in (0.9s easeOut).
+   - **Glyph spring-in** — the central glyph (✦❋✺❖✸✧❤♪) rotates from -90° + scales from 0 with a spring stiffness of 140.
+   - **Pulsing glyph** — `divider-glyph-pulse` keyframe scales 1↔1.18 with text-shadow breathing (3.4s ease-in-out infinite).
+   - **Color-mix drop-shadows** — ornaments get a `drop-shadow(0 0 6px color-mix(in srgb, var(--divider-accent) 30%, transparent))` glow.
+   - Verified end-to-end: 7 dividers render on the page with unique ornaments + accent colors; VLM confirmed "ornamental design with central glyph and SVG flourishes" + "visually premium". Polish 8/10.
+
+5. **Hero title cinematic shimmer** (`HeroSection.tsx` + `globals.css`). A slow light sweep across the "Heena" title. Features:
+   - **Diagonal gradient sweep** — `linear-gradient(100deg, transparent 30%, white 48%, cream 50%, white 52%, transparent 70%)` at 250% background-size, animating `background-position` from 150% → -150% over 6s.
+   - **`mix-blend-mode: overlay`** (light mode) / `screen` (dark mode) so the sweep brightens the gradient text beneath.
+   - **1.2s start delay** so the title's blur-in animation completes first.
+   - **Dark mode variant** — warmer amber tones for the sweep.
+   - **Reduced-motion** — sweep disabled, opacity 0.
+   - Verified end-to-end: `.hero-title-shimmer` class present on the title span; VLM confirmed title is "clearly visible with a gradient (amber→rose)" + "premium and well-balanced". Polish 9/10.
+
+6. **Page-level ambient drifting glyphs** (new `AmbientGlyphs.tsx` component + `globals.css`). A fixed, pointer-events-none layer of 5 faint ornamental glyphs (✦❋✺❖✸) that slowly drift across the entire viewport. Features:
+   - **5 glyphs** in different colors (amber, rose, violet, emerald, pink) at 2.4–3.2rem font size.
+   - **4 unique drift keyframes** — `ambient-drift-1` through `ambient-drift-4`, each translating 60–95vw + rotating 320–380° over 38–54s. One glyph runs in reverse for variety.
+   - **Very faint opacity** (0.08 light / 0.12 dark) so they read as "something in the air" without competing with foreground content.
+   - **`will-change: transform`** for GPU-accelerated drift.
+   - **Reduced-motion** — entire field hidden via `display: none`.
+   - Verified end-to-end: 5 `.ambient-glyph` elements present in DOM; no horizontal overflow caused by their drift (they start off-screen and the field is `overflow: hidden`).
+
+7. **Section-opening vignette utility** (`.section-vignette` CSS class, available for future use). A soft radial glow at the top of a section using `color-mix(in srgb, var(--section-accent) 12%, transparent)` for a premium editorial feel. Light + dark variants.
+
+#### Lint / Build
+- One initial lint warning: unused `eslint-disable-next-line react-hooks/set-state-in-effect` directive in `WishLanternSky` (the `setReleasedCount` call in the hydrate effect didn't trigger the rule). Removed the directive.
+- Final `bun run lint` → clean (0 errors, 0 warnings).
+
+### Stage Summary / Verification Results
+- `bun run lint` → clean (0 errors, 0 warnings).
+- Dev server compiles cleanly, `GET / 200` in ~35ms.
+- **Full-page scroll-through QA** (desktop 1440×900): scrolled the entire 14,342px page in 700px steps over ~3s with `error` + `unhandledrejection` capture. **0 console errors.** No horizontal overflow (scrollW=1440=innerW). Page height grew from 14,162px (R9) → 14,342px (R10) due to the new constellation wrap + export button row + slightly taller premium dividers.
+- **Section count**: 9 sections (unchanged from R9 — no new sections added, only features within existing sections).
+- agent-browser desktop QA (1440×900) confirmed:
+  - **Vinyl circular spectrum**: 320×320 canvas centered on the 224×224 record button (centers differ by only 3px on y-axis); idle state shows faint violet breathing dots; active state (after clicking play) shows 64 amber→rose→violet radial bars; aria-label switches to "currently active". VLM 8/10. ✓
+  - **Wish Lantern constellation**: with 3 seeded lantern records, the heart-shaped constellation renders with star markers + "your wishes formed a heart" label + "hide constellation" + "save the sky (png)" buttons. VLM 8/10. ✓
+  - **Wish Lantern PNG export**: clicking "save the sky (png)" downloads `heena-wishes-in-the-sky.png` (550KB) to ~/Downloads; PNG contains starry night-sky bg + title + 3 wishes with lantern bullets + footer. VLM confirmed all elements. ✓
+  - **Section dividers**: 7 `.section-divider-premium` elements render with unique SVG ornaments + accent colors + beaded lines + pulsing glyphs. VLM 8/10. ✓
+  - **Hero shimmer**: `.hero-title-shimmer` class present; title clearly visible with gradient. VLM 9/10. ✓
+  - **Ambient glyphs**: 5 `.ambient-glyph` elements render in a fixed field; no overflow. ✓
+  - **No console errors** throughout all interactions. ✓
+  - **No horizontal overflow** (scrollW=1440=innerW). ✓
+- **Mobile 390×844 QA**: scrollH=15,441px, scrollW=390=innerW (no overflow). Vinyl spectrum shrinks to 260×260. Constellation + buttons fit without overflow. VLM 7/10 (constellation could be brighter — addressed by boosting stroke widths + opacities; re-verified at 8/10 on desktop).
+- VLM (glm-4.6v) reviews:
+  - **Hero**: "Polish 9/10 — clearly visible gradient title (amber→rose), floating decorative glyphs, twinkling constellation dots, premium well-balanced layout."
+  - **Vinyl spectrum**: "Polish 8/10 — circular ring of audio spectrum bars around the vinyl record, orange/warm tone bars, visible and active."
+  - **Constellation**: "Polish 8/10 — heart-shaped constellation clearly visible with glowing lines and star markers, 'your wishes formed a heart' label visible, both control buttons visible."
+  - **PNG export**: "Starry night-sky background, title 'Wishes in the Sky' with 'for Heena' subtitle, 3 wishes as a list with lantern bullets, footer with release count. No visual issues."
+  - **Section divider**: "Polish 8/10 — ornamental design with central glyph and SVG flourishes, visually premium."
+
+### Unresolved Issues or Risks, and Priority Recommendations for the Next Phase
+- **Harmless dev warning**: framer-motion `useScroll` container-position warning persists in dev (sections are `relative`). Non-blocking; cosmetic only. Same as R2–R9.
+- **Constellation subtlety on mobile**: even after boosting stroke widths + opacities, the constellation is more subtle on mobile (390px) than desktop due to the smaller render area. The heart is still visible but could be made more prominent by increasing the wrap size on mobile if desired.
+- **PNG export font limitation**: the canvas uses `Georgia, 'Playfair Display', serif` but the browser falls back to Georgia (or system serif) because Playfair Display isn't loaded as a canvas font. This is the same limitation as the existing StatsExportCard (R4 leftover). A future enhancement could use `document.fonts.ready` + `FontFace.load` to embed Google Fonts in canvas.
+- **Vinyl spectrum in headless test**: the AnalyserNode reads real audio data, so the spectrum only moves when audio is actually playing. In the headless test, the procedural melody was started and the spectrum showed reactive bars. For uploaded audio, the spectrum will react to the actual track.
+- **Recommended next-phase features** (in priority order):
+  1. **Vinyl: real audio + .lrc upload** — support user-uploaded audio files + .lrc lyrics for true scrub/sync, replacing the procedural melody. The circular spectrum + waveform would become even more meaningful with real audio. (Carried forward from R8/R9.)
+  2. **Wish Lantern: animated lantern release into constellation** — when a lantern is released, animate a star marker being "added" to the heart constellation (currently the constellation just appears at its final state).
+  3. **Memory deck: per-card ambient sound** — each chapter card could play a unique ambient soundscape (rain for "Quiet Mornings", wind for "Adventures Small") when flipped, using short procedural Web Audio patches. (Carried forward from R9.)
+  4. **Letter composer: voice memo recording** — let the user record themselves reading the letter via `MediaRecorder`, attach the audio to the letter, persist as a Blob in IndexedDB. (Carried forward from R8/R9.)
+  5. **Stats export: embed Google Fonts in canvas** so the keepsake PNGs use the exact Playfair Display + Plus Jakarta Sans typography. (Carried forward from R4/R7.)
+  6. **Compliments garden: chip-to-chip "grow" animation** — when a custom compliment is planted, animate it growing from the input upward into the garden. (Carried forward from R8.)
+  7. **Accessibility**: full keyboard navigation pass for the Wish Lantern Sky (focus trap on the sky log modal, screen-reader announcements for lantern release + count updates). (Carried forward from R9.)
+  8. **Performance**: the `CircularSpectrum` canvas runs at 60fps via requestAnimationFrame; consider pausing it when the vinyl section is out of view (currently it keeps drawing the idle ring). Similarly for the `RealtimeWaveform`. (Carried forward from R9.)
+

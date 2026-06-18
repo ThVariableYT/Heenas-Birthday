@@ -188,6 +188,290 @@ function LanternSvg({ hue, wish, risen }: { hue: number; wish: string; risen: bo
 }
 
 /* ------------------------------------------------------------------ */
+/*  Constellation overlay — after 3+ lanterns, draw a heart shape       */
+/* ------------------------------------------------------------------ */
+
+/** Heart-curve parametric point generator (t in [0, 2π]). */
+function heartPoint(t: number, scale = 1, cx = 50, cy = 50) {
+  // Classic heart parametric — y is flipped (canvas y grows down).
+  const x = 16 * Math.pow(Math.sin(t), 3);
+  const y = -(13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t));
+  return { x: cx + (x / 32) * scale, y: cy + (y / 32) * scale };
+}
+
+/** ConstellationOverlay — renders an SVG heart drawn from the released lanterns. */
+function ConstellationOverlay({
+  count,
+  visible,
+}: {
+  count: number;
+  visible: boolean;
+}) {
+  // We need at least 3 lanterns to start drawing; cap the heart at 14 nodes.
+  const nodeCount = Math.min(14, Math.max(3, count));
+  // Evenly sample the heart curve.
+  const nodes = Array.from({ length: nodeCount }, (_, i) => {
+    const t = (i / nodeCount) * Math.PI * 2;
+    return heartPoint(t, 38, 50, 48);
+  });
+
+  if (!visible || count < 3) return null;
+
+  // Build the path: connect all nodes in order, then close.
+  const pathD = nodes
+    .map((n, i) => `${i === 0 ? "M" : "L"}${n.x.toFixed(2)} ${n.y.toFixed(2)}`)
+    .join(" ") + " Z";
+
+  return (
+    <motion.svg
+      className="lantern-constellation"
+      viewBox="0 0 100 100"
+      preserveAspectRatio="xMidYMid meet"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 1.4, ease: "easeOut" }}
+      aria-hidden
+    >
+      <defs>
+        <linearGradient id="const-line-grad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#fbbf24" stopOpacity="0.7" />
+          <stop offset="50%" stopColor="#fb7185" stopOpacity="0.8" />
+          <stop offset="100%" stopColor="#a78bfa" stopOpacity="0.7" />
+        </linearGradient>
+        <radialGradient id="const-star-grad" cx="0.5" cy="0.5" r="0.5">
+          <stop offset="0%" stopColor="#fff7d6" />
+          <stop offset="60%" stopColor="#fbbf24" stopOpacity="0.7" />
+          <stop offset="100%" stopColor="#fbbf24" stopOpacity="0" />
+        </radialGradient>
+      </defs>
+      {/* Faint heart outline path */}
+      <motion.path
+        d={pathD}
+        fill="none"
+        stroke="url(#const-line-grad)"
+        strokeWidth="0.5"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+        initial={{ pathLength: 0, opacity: 0 }}
+        animate={{ pathLength: 1, opacity: 0.75 }}
+        transition={{ duration: 2.2, ease: "easeInOut", delay: 0.2 }}
+      />
+      {/* Glow pass — wider, lower opacity */}
+      <motion.path
+        d={pathD}
+        fill="none"
+        stroke="url(#const-line-grad)"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+        style={{ filter: "blur(1.4px)" }}
+        initial={{ pathLength: 0, opacity: 0 }}
+        animate={{ pathLength: 1, opacity: 0.4 }}
+        transition={{ duration: 2.2, ease: "easeInOut", delay: 0.2 }}
+      />
+      {/* Star markers at each node */}
+      {nodes.map((n, i) => (
+        <motion.circle
+          key={i}
+          cx={n.x}
+          cy={n.y}
+          r="1.6"
+          fill="url(#const-star-grad)"
+          initial={{ scale: 0, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ delay: 0.6 + i * 0.12, duration: 0.5, type: "spring", stiffness: 200 }}
+        />
+      ))}
+    </motion.svg>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  PNG keepsake export — render wishes to a starry canvas              */
+/* ------------------------------------------------------------------ */
+
+async function exportSkyPng(records: ReleasedRecord[], releasedCount: number) {
+  const W = 800;
+  const H = 1000;
+  const canvas = document.createElement("canvas");
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+
+  // 1) Night-sky gradient background.
+  const bg = ctx.createLinearGradient(0, 0, 0, H);
+  bg.addColorStop(0, "#1a0d2e");
+  bg.addColorStop(0.4, "#2d1b4e");
+  bg.addColorStop(0.8, "#1a0d2e");
+  bg.addColorStop(1, "#0d0818");
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
+
+  // 2) Atmospheric haze ellipses.
+  const haze1 = ctx.createRadialGradient(W * 0.25, H * 0.3, 0, W * 0.25, H * 0.3, 280);
+  haze1.addColorStop(0, "rgba(167, 139, 250, 0.18)");
+  haze1.addColorStop(1, "rgba(167, 139, 250, 0)");
+  ctx.fillStyle = haze1;
+  ctx.fillRect(0, 0, W, H);
+
+  const haze2 = ctx.createRadialGradient(W * 0.75, H * 0.25, 0, W * 0.75, H * 0.25, 240);
+  haze2.addColorStop(0, "rgba(251, 113, 133, 0.14)");
+  haze2.addColorStop(1, "rgba(251, 113, 133, 0)");
+  ctx.fillStyle = haze2;
+  ctx.fillRect(0, 0, W, H);
+
+  // 3) Stars — random but deterministic per export.
+  let seed = 42;
+  const rand = () => {
+    seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+    return seed / 0x7fffffff;
+  };
+  for (let i = 0; i < 120; i++) {
+    const x = rand() * W;
+    const y = rand() * H * 0.7;
+    const r = rand() * 1.4 + 0.3;
+    const bright = rand() > 0.7;
+    ctx.fillStyle = bright
+      ? `rgba(255, 247, 214, ${0.7 + rand() * 0.3})`
+      : `rgba(255, 255, 255, ${0.3 + rand() * 0.3})`;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+    if (bright) {
+      // Cross-glow on bright stars.
+      ctx.strokeStyle = `rgba(255, 247, 214, 0.35)`;
+      ctx.lineWidth = 0.5;
+      ctx.beginPath();
+      ctx.moveTo(x - r * 3, y);
+      ctx.lineTo(x + r * 3, y);
+      ctx.moveTo(x, y - r * 3);
+      ctx.lineTo(x, y + r * 3);
+      ctx.stroke();
+    }
+  }
+
+  // 4) Mountain silhouette at the bottom.
+  ctx.fillStyle = "#0d0818";
+  ctx.beginPath();
+  ctx.moveTo(0, H);
+  ctx.lineTo(0, H - 80);
+  const peaks = [
+    [80, H - 110], [180, H - 70], [280, H - 130], [380, H - 80],
+    [480, H - 120], [580, H - 70], [680, H - 110], [780, H - 80], [W, H - 100],
+  ];
+  peaks.forEach(([x, y]) => ctx.lineTo(x, y));
+  ctx.lineTo(W, H);
+  ctx.closePath();
+  ctx.fill();
+
+  // 5) Title block.
+  ctx.textAlign = "center";
+  ctx.fillStyle = "#fff7d6";
+  ctx.font = "bold 42px Georgia, 'Playfair Display', serif";
+  ctx.fillText("Wishes in the Sky", W / 2, 110);
+
+  ctx.font = "italic 20px Georgia, serif";
+  ctx.fillStyle = "rgba(251, 191, 36, 0.85)";
+  ctx.fillText("✦ for Heena ✦", W / 2, 145);
+
+  // Ornamental divider
+  ctx.strokeStyle = "rgba(251, 113, 133, 0.4)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(W / 2 - 100, 170);
+  ctx.lineTo(W / 2 - 20, 170);
+  ctx.moveTo(W / 2 + 20, 170);
+  ctx.lineTo(W / 2 + 100, 170);
+  ctx.stroke();
+  ctx.fillStyle = "rgba(251, 113, 133, 0.6)";
+  ctx.font = "16px serif";
+  ctx.fillText("✦", W / 2, 175);
+
+  // 6) Wishes list.
+  const listTop = 210;
+  const listBottom = H - 130;
+  const availableH = listBottom - listTop;
+  const wishesToShow = records.slice(0, 8);
+  const rowH = Math.min(72, availableH / Math.max(wishesToShow.length, 1));
+
+  ctx.textAlign = "left";
+  wishesToShow.forEach((r, i) => {
+    const y = listTop + i * rowH + 28;
+
+    // Lantern bullet
+    ctx.font = "28px serif";
+    ctx.textAlign = "center";
+    ctx.fillText("🏮", 80, y + 4);
+
+    // Wish text — wrap if needed
+    ctx.textAlign = "left";
+    ctx.font = "italic 18px Georgia, serif";
+    ctx.fillStyle = "rgba(245, 230, 211, 0.95)";
+
+    const maxW = W - 140;
+    const text = `“${r.wish}”`;
+    const words = text.split(" ");
+    let line = "";
+    let lineY = y;
+    const lines: string[] = [];
+    for (const word of words) {
+      const test = line ? line + " " + word : word;
+      if (ctx.measureText(test).width > maxW) {
+        if (line) lines.push(line);
+        line = word;
+      } else {
+        line = test;
+      }
+    }
+    if (line) lines.push(line);
+
+    // Cap at 2 lines per wish.
+    const capped = lines.slice(0, 2);
+    if (lines.length > 2) {
+      capped[1] = capped[1].slice(0, Math.max(0, capped[1].length - 1)) + "…";
+    }
+    capped.forEach((ln, li) => {
+      ctx.fillText(ln, 110, lineY + li * 22);
+    });
+
+    // Timestamp
+    ctx.font = "10px monospace";
+    ctx.fillStyle = "rgba(167, 139, 250, 0.6)";
+    const dateStr = new Date(r.at).toLocaleString(undefined, {
+      month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
+    });
+    ctx.fillText(dateStr, 110, lineY + (capped.length * 22) + 4);
+  });
+
+  // 7) Footer.
+  ctx.textAlign = "center";
+  ctx.fillStyle = "rgba(251, 191, 36, 0.7)";
+  ctx.font = "italic 14px Georgia, serif";
+  const footerText = releasedCount > 0
+    ? `released with love · ${releasedCount} wish${releasedCount === 1 ? "" : "es"} · ${new Date().toLocaleDateString()}`
+    : `released with love · ${new Date().toLocaleDateString()}`;
+  ctx.fillText(footerText, W / 2, H - 60);
+
+  ctx.font = "11px monospace";
+  ctx.fillStyle = "rgba(255, 255, 255, 0.3)";
+  ctx.fillText("a birthday composed in code", W / 2, H - 36);
+
+  // 8) Trigger download.
+  canvas.toBlob((blob) => {
+    if (!blob) return;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "heena-wishes-in-the-sky.png";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }, "image/png");
+}
+
+/* ------------------------------------------------------------------ */
 /*  Main component                                                     */
 /* ------------------------------------------------------------------ */
 
@@ -197,6 +481,9 @@ export default function WishLanternSky() {
   const [releasedCount, setReleasedCount] = useState(0);
   const [records, setRecords] = useState<ReleasedRecord[]>([]);
   const [showLog, setShowLog] = useState(false);
+  const [sessionReleases, setSessionReleases] = useState(0);
+  const [showConstellation, setShowConstellation] = useState(true);
+  const [exporting, setExporting] = useState(false);
   const idRef = useRef(0);
   const incStat = useStatsStore((s) => s.inc);
 
@@ -216,7 +503,6 @@ export default function WishLanternSky() {
     try {
       const count = window.localStorage.getItem(RELEASED_COUNT_KEY);
       if (count) {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         setReleasedCount(parseInt(count, 10) || 0);
       }
       const raw = window.localStorage.getItem(STORAGE_KEY);
@@ -270,6 +556,7 @@ export default function WishLanternSky() {
     // Update stats + persistence
     const newCount = releasedCount + 1;
     setReleasedCount(newCount);
+    setSessionReleases((n) => n + 1);
     incStat("lanternsReleased");
     try {
       window.localStorage.setItem(RELEASED_COUNT_KEY, String(newCount));
@@ -296,10 +583,25 @@ export default function WishLanternSky() {
   }, [wish, releasedCount, incStat]);
 
   /* ---------------------------------------------------------------- */
+  /*  PNG keepsake export handler                                      */
+  /* ---------------------------------------------------------------- */
+  const handleExport = useCallback(async () => {
+    setExporting(true);
+    try {
+      await exportSkyPng(records, releasedCount);
+      sparkle({ x: window.innerWidth / 2, y: window.innerHeight / 2, count: 18, kind: "rainbow" });
+      playChime(659.25, "sine", 0.8, 0.12);
+    } finally {
+      setTimeout(() => setExporting(false), 800);
+    }
+  }, [records, releasedCount]);
+
+  /* ---------------------------------------------------------------- */
   /*  Render                                                           */
   /* ---------------------------------------------------------------- */
 
   const remaining = MAX_WISH_LEN - wish.length;
+  const constellationCount = Math.max(sessionReleases, releasedCount);
 
   return (
     <section className="lantern-sky-section relative overflow-hidden px-4 py-32">
@@ -387,6 +689,69 @@ export default function WishLanternSky() {
               : `${releasedCount} lantern${releasedCount === 1 ? "" : "s"} released into the sky`}
           </span>
         </motion.div>
+
+        {/* Constellation overlay — appears when 3+ lanterns are released.
+            Floats in the sky behind the input card. */}
+        <AnimatePresence>
+          {constellationCount >= 3 && (
+            <motion.div
+              className="lantern-constellation-wrap pointer-events-none absolute inset-x-0 top-24 mx-auto"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 1 }}
+              aria-hidden
+            >
+              <ConstellationOverlay
+                count={constellationCount}
+                visible={showConstellation}
+              />
+              {showConstellation && constellationCount >= 3 && (
+                <motion.div
+                  className="lantern-constellation-label"
+                  initial={{ opacity: 0, y: -6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 1.4, duration: 0.7 }}
+                >
+                  ✦ your wishes formed a heart ✦
+                </motion.div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Constellation + export controls — appear after first release */}
+        {releasedCount > 0 && (
+          <motion.div
+            className="mx-auto mb-6 flex w-fit flex-wrap items-center justify-center gap-2"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+          >
+            {constellationCount >= 3 && (
+              <button
+                type="button"
+                onClick={() => setShowConstellation((v) => !v)}
+                className="lantern-ctrl-btn"
+                aria-label={showConstellation ? "Hide the constellation" : "Show the constellation"}
+                aria-pressed={showConstellation}
+              >
+                <span aria-hidden>{showConstellation ? "▾" : "▸"}</span>
+                <span>{showConstellation ? "hide constellation" : "show constellation"}</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={handleExport}
+              disabled={exporting || records.length === 0}
+              className="lantern-ctrl-btn lantern-ctrl-primary"
+              aria-label="Save the sky as a PNG keepsake"
+            >
+              <span aria-hidden>{exporting ? "◌" : "⬇"}</span>
+              <span>{exporting ? "preparing…" : "save the sky (png)"}</span>
+            </button>
+          </motion.div>
+        )}
 
         {/* Wish input */}
         <motion.div

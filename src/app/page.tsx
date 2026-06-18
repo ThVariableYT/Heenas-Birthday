@@ -22,6 +22,7 @@ import FilmGrainOverlay from "@/components/birthday/FilmGrainOverlay";
 import SectionDivider from "@/components/birthday/SectionDivider";
 import ScrollSpy from "@/components/birthday/ScrollSpy";
 import WishLanternSky from "@/components/birthday/WishLanternSky";
+import AmbientGlyphs from "@/components/birthday/AmbientGlyphs";
 import { initAudio, resumeAudio, startAmbientPad } from "@/lib/audio";
 
 const TimelineSection = dynamic(() => import("@/components/birthday/TimelineSection"));
@@ -49,6 +50,7 @@ export default function Home() {
   return (
     <div className="relative flex min-h-screen flex-col overflow-x-hidden">
       <BackgroundBlobs />
+      <AmbientGlyphs />
       <SparkleCanvas />
       <ConfettiRain />
       <FilmGrainOverlay />
