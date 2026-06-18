@@ -498,3 +498,113 @@ Unresolved Issues or Risks, and Priority Recommendations for the Next Phase
   6. **Accessibility**: full keyboard navigation pass + visible focus rings on poem composer mood buttons; screen-reader announcements for poem line reveals.
   7. **Performance**: prefetch the VinylPlayer dynamic chunk on hover; virtualize the wish album if it grows beyond 12 entries.
   8. **Custom cursor for poem composer**: a small ✶ that follows the cursor inside the poem dialog (gated behind reduced-motion).
+
+---
+
+## Round 7 — Scheduled webDevReview (cron #215324)
+
+**Task ID**: 7
+**Agent**: main (webDevReview)
+**Task**: Assess status via agent-browser QA, then add more styling details + more features per the mandatory requirements.
+
+### Work Log
+- Read prior worklog (R1–R6, ~500 lines); confirmed project stable and fully functional across 6 prior rounds.
+- Pre-feature QA via agent-browser (desktop 1440×900): intro → enter → all 8 sections render; no console errors; no horizontal overflow (scrollW=1440=innerW); scrollH desktop 12965. Theme toggle, memory flip, candle blow, stats increment all verified functional. VLM spot-checks of all sections clean.
+- **No bugs to fix** — proceeded to feature/style additions per the mandatory requirements.
+
+#### New Features
+1. **Memory Deck back-side accent glow + drop-cap** (`MemoryDeck.tsx` + globals.css). The back of each memory card now extends the per-card accent color (rose, amber, violet, emerald, sky, gold) with:
+   - A `.memory-back-accent-glow` overlay — two stacked radial gradients (top + bottom) tinted with the card's accent color via `var(--card-accent-soft)`, using `mix-blend-mode: screen` so it reads as a soft glow on the dark gradient background.
+   - Two large decorative `.memory-back-quote-mark` glyphs (`"`) at the top-left and bottom-right corners of the back, scaled + flipped, accent-colored, with a soft drop-shadow glow.
+   - The back title, divider line, and corner ✦ are now accent-colored (via inline `style={{ color: "var(--card-accent)" }}`) instead of the previous uniform amber.
+   - A `.drop-cap-quote::first-letter` CSS rule that styles the first letter of the back body as a serif drop-cap (2.6em, accent-colored, glow text-shadow) — applies to both the flipped card and the reading-mode body.
+   - Reading mode also updated: chapter glyph, label, and divider now use the accent color (was previously amber-400).
+2. **Love Jar kept-thoughts PNG image export** (`LoveJar.tsx` + globals.css). A new "image" button (next to the existing "share" button) in the kept-thoughts tray generates a 1080×1350 PNG "kept with love" keepsake entirely client-side via HTML5 Canvas. The keepsake features: warm cream gradient background + aurora washes, double-rule ornamental border with art-deco corner flourishes, gradient "For Heena" title, 2×4 grid of kept-thought cards (favorites get a rose-tinted background + ★ marker + rose glow), per-card text wrapping (up to 4 visible lines), and a footer with "Gathered slowly, kept tenderly." + date + ❋ H ❋ monogram stamp. Uses the same procedural Canvas approach as StatsExportCard (no font embedding — browser-default serif/sans-serif). Triggers a 24-particle rainbow sparkle + high chime + toast "keepsake composed — check your downloads" on success. Spinner state during canvas render. Disabled when no kept thoughts.
+3. **Poem Composer personal "woven from your visit" line** (`PoemComposer.tsx` + `ComplimentsSection.tsx`). The poem composer now weaves a 9th optional line that samples from the user's actual interactions on the card:
+   - ComplimentsSection now persists plucked compliments to `localStorage` (`heena:plucked-compliments`, max 6) — on reload, the plucked tray restores.
+   - A new `composePersonalLine(name, seed)` function reads `heena:plucked-compliments` + `heena:sealed-wish` from localStorage and produces 6 candidate lines (3 compliment-based + 3 wish-based templates). Returns `null` if neither exists, so the UI cleanly omits the line.
+   - The personal line renders below the 8-line poem, separated by a divider, in rose-tinted italic with a ✶ accent marker. It has the same line-by-line reveal animation (with a staggered delay based on `poem.length * 0.12s`) and is independently clickable to copy.
+   - A "woven from your visit" footnote label appears below the personal line.
+   - The full-poem copy now includes the personal line if present.
+   - Verified end-to-end: pluck compliment "You make rooms feel warmer just by being in them." → open poem composer → personal line "And a true thing about you, Heena: You make rooms feel warmer just by being in them." renders below the 8-line poem with the "woven from your visit" label.
+4. **Vinyl "now playing" floating mini-player** (`VinylPlayer.tsx` + globals.css). A new fixed-bottom mini-player appears when music is playing and the user has scrolled away from the vinyl section. Features:
+   - `IntersectionObserver` on the vinyl `<section>` element with `-20% 0px -20% 0px` rootMargin — the section is "in view" if any part of it is in the middle 60% of the viewport.
+   - The mini-player (`showMiniPlayer = playing && currentTrack && !sectionInView`) slides up from below (transform translateY(140%) → 0) with a 0.5s cubic-bezier transition.
+   - Visual elements: a 30px spinning `.npm-disc` (radial gradient with center label), a 4-bar `.npm-eq` (animated equalizer bars with staggered delays), the track name (`.npm-title`, ellipsis after 12rem), and two `.npm-jump` round buttons:
+     - **Pause** (two vertical bars icon) — calls `stopPlayback()` to stop playback completely.
+     - **Jump back** (upward arrow icon) — calls `sectionRef.current.scrollIntoView({ behavior: "smooth", block: "center" })` to scroll the user back to the record player.
+   - Dark glass surface (rgba(20,14,24,0.85) + backdrop-blur), amber border, warm text — premium "now playing" feel.
+   - Verified end-to-end: click vinyl disc → "Golden Hour" plays → scroll down past the vinyl section → mini-player slides up showing "Golden Hour" + spinning disc + animated EQ bars + pause + jump-back buttons.
+
+#### Styling Enhancements
+5. **Cake wish input circular count ring** (`CakeSection.tsx` + globals.css). Replaced the previous plain "{wishInput.length}/140" text counter with a 44×44px circular SVG progress ring:
+   - Two concentric `<circle>` elements: a static `.ring-bg` (light amber track) and a dynamic `.ring-fg` (amber→rose gradient stroke) whose `stroke-dashoffset` is computed from `2π × 19 × (1 - length/140)` — so the ring fills clockwise as the user types.
+   - A `.ring-label` centered inside the ring showing the live character count (e.g. "37").
+   - The ring uses a `linearGradient` (`#f59e0b` → `#f43f5e`) defined in the SVG `<defs>` with `id="wishRingGrad"`.
+   - Animated transition on `stroke-dashoffset` (0.35s cubic-bezier) so the ring smoothly fills/empties.
+   - The ring sits inline-flex next to the wish input (was previously below it), saving vertical space.
+   - `role="status"` + `aria-label="Wish length {n} of 140 characters"` for screen readers.
+   - Dark-mode variants included.
+6. **Vinyl active lyric gradient sweep** (`globals.css`). The `.lyric-line.active` rule now animates a multi-stop linear gradient (`currentColor` → `currentColor` → `#fde68a` → `#fb7185` → `currentColor`) across the text via `background-clip: text` + `-webkit-text-fill-color: transparent`, sweeping at 3.6s linear infinite. Removed the previous static `text-shadow` (would conflict with transparent fill). Dark-mode variant uses an amber → white → rose sweep.
+7. **Compliments garden floating petals** (`ComplimentsSection.tsx` + globals.css). Added 14 ambient floating petals to the garden background:
+   - Each petal is a 14×14px CSS-pseudo-teardrop shape (border-radius: 50% 0 50% 50%) in a soft warm color (amber/rose/pink/yellow/fuchsia/light-rose palette).
+   - `petal-drift` keyframe animates each petal from above the viewport (translate3d(0, -10vh, 0)) down to below (translate3d(var(--drift-x), 110vh, 0)) with a 540° rotation, fading in/out via opacity.
+   - Per-petal randomized properties: horizontal start position, animation delay (0–18s), duration (16–28s), horizontal drift (-60 to +60px), color, and scale (0.7–1.4×).
+   - Generated once on mount via `useRef` (stable across re-renders).
+   - The petals live in a `.garden-petals` container (`position: absolute; inset: 0; pointer-events: none; overflow: hidden`) so they drift across the entire garden box without obstructing clicks on the chips.
+8. **SectionHeader scroll-spy sticky indicator** (`ScrollSpy.tsx` new file + `SectionHeader.tsx` + `page.tsx` + globals.css). A new fixed top-center pill that shows the user which numbered section they're currently reading:
+   - `SectionHeader` now publishes `data-section-number` + `data-section-eyebrow` attributes on its root motion.div.
+   - `ScrollSpy` queries the DOM for all `[data-section-number]` elements on mount and on every scroll event (with rAF throttle). It picks the last header whose top is at or above the "reading line" (window.innerHeight × 0.33) as the active section.
+   - The pill is hidden until the user has scrolled past ~45% of the viewport (so the hero is the focus at the top).
+   - To handle the case where the main content mounts late (it's behind the `entered` intro gate), the effect schedules 4 early polls at 200/600/1200/2000ms after mount.
+   - The pill itself (`.scroll-spy-pill`) is a glass capsule with: a numbered `.spy-badge` (gradient amber→rose pill with white text), a pulsing `.spy-dot`, and the section eyebrow text (uppercase tracked mono). Slides down from -12px with a 0.4s transition when `.visible`.
+   - Wired into `page.tsx` between `<ScrollProgress />` and `<FloatingControls />`.
+   - Verified end-to-end: scroll down past hero → pill appears with "01 the timeline" → continues updating through "02 the memory deck" → "03 a jar of kept thoughts" → ... → "07 a little ledger of today" as the user scrolls.
+9. **CSS infrastructure additions** in `globals.css`:
+   - 9 new keyframes: `lyric-sweep`, `petal-drift`, `spy-dot-pulse`, `npm-spin`, `npm-eq-bar`, `stagger-rise`.
+   - 7 new utility classes: `.memory-back-accent-glow`, `.memory-back-quote-mark`, `.drop-cap-quote`, `.wish-count-ring`, `.garden-petals` / `.garden-petal`, `.scroll-spy-pill` (with `.spy-badge` / `.spy-dot`), `.now-playing-mini` (with `.npm-disc` / `.npm-eq` / `.npm-title` / `.npm-jump`), `.stagger-rise`, `.kept-export-preview`.
+   - Dark-mode variants for the wish count ring, scroll-spy pill, and lyric sweep (lighter color sweep for dark backgrounds).
+   - `prefers-reduced-motion` block extended to neutralize all new infinite animations (lyric sweep, petals, spy dot, mini-player disc + EQ bars, stagger rise).
+
+#### Bug Fixed During Implementation
+- **ScrollSpy not rendering after intro**: initial implementation queried the DOM for `[data-section-number]` headers once on mount, but the main content (and thus the SectionHeaders) isn't in the DOM until the user clicks "Open the gift" (gated by the `entered` state). The effect ran once at mount, found 0 headers, returned early without subscribing to scroll. Fixed by re-querying the DOM inside the `compute()` function on every scroll event (cheap — `querySelectorAll` is fast for ~7 elements), plus scheduling 4 early polls at 200/600/1200/2000ms after mount to catch the moment when the main content enters.
+
+#### Lint / Build
+- Initial lint: 2 unused eslint-disable warnings in `ComplimentsSection.tsx` (the `react-hooks/set-state-in-effect` disables were no longer needed for the localStorage-hydrate effect after refactoring). Removed the directives.
+- Final `bun run lint` → clean (0 errors, 0 warnings).
+
+### Stage Summary / Verification Results
+- `bun run lint` → clean (0 errors, 0 warnings).
+- Dev server compiles cleanly, `GET / 200`.
+- agent-browser desktop QA (1440×900) confirmed:
+  - **Scroll-spy pill**: appears after scrolling past hero, shows "01 the timeline" → "02 the memory deck" → ... updating through all 7 sections as user scrolls. ✓
+  - **Memory card back accent**: flipping Ch 01 → back shows rose-tinted glow overlay, decorative quote marks at corners, accent-colored title/divider, drop-cap on first letter of body. `getComputedStyle` confirms `--card-accent: #be123c` (rose). ✓
+  - **Cake wish count ring**: 44×44 SVG ring renders with label "0" + correct stroke-dashoffset for empty state; typing "A wish for love and joyful adventures" (37 chars) updates label to "37" + animates dashoffset (119.38 → 87.83). ✓
+  - **Compliments garden petals**: 14 `.garden-petal` elements present in `.garden-petals` container; plucking a compliment persists to `localStorage['heena:plucked-compliments']` (verified: `["You make rooms feel warmer just by being in them."]`). ✓
+  - **Love jar image export**: "image" button present next to "share" + "clear" in kept-thoughts tray; aria-label "Download kept thoughts as a PNG keepsake" present. ✓
+  - **Vinyl active lyric sweep**: when "Golden Hour" is playing, the active `.lyric-line.active` has `animationName: "lyric-sweep"`, `backgroundImage: linear-gradient(90deg, rgb(178,82,9) 0%, ..., #fde68a 50%, #fb7185 65%, ...)`, `backgroundSize: 200% 100%`, `-webkit-text-fill-color: rgba(178,82,9,0.02)` (effectively transparent showing the gradient). ✓
+  - **Vinyl mini-player**: when scrolled away from the vinyl section while "Golden Hour" is playing, `.now-playing-mini.visible` appears with `.npm-title` = "Golden Hour", `.npm-disc` (spinning vinyl disc), `.npm-eq` with 4 animated bars, pause + jump-back buttons. ✓
+  - **Poem composer personal line**: opening the composer after plucking a compliment shows 9 `.poem-line` elements (8 standard + 1 personal). Personal line text: "And a true thing about you, Heena: You make rooms feel warmer just by being in them.". "woven from your visit" label present. ✓
+  - **Dark mode**: all new elements (scroll-spy pill, mini-player, wish count ring, lyric sweep, memory back glow) adapt cleanly. ✓
+  - **No console errors** throughout all interactions. ✓
+  - **No horizontal overflow** (scrollW=1440=innerW). ✓
+- VLM (glm-4.6v) reviews:
+  - Scroll-spy + compliments + vinyl: "Polish 8/10 — strong visual cohesion, no critical bugs, minor layout tweaks needed for record player section" (subjective spacing note, not a real bug).
+  - Memory back + mini-player + poem: "Polish 8/10 — strong attention to detail, cohesive visual language, thoughtful micro-interactions, 'woven from your visit' line adds personalization, mini-player integrates smoothly."
+
+### Unresolved Issues or Risks, and Priority Recommendations for the Next Phase
+- **Harmless dev warning**: framer-motion `useScroll` container-position warning persists in dev (sections are `relative`). Non-blocking; cosmetic only. Same as R2–R6.
+- **Vinyl audio is still procedural** (Web Audio synth, no real audio files). The mini-player's pause button calls `stopPlayback()` which fully stops the procedural melody (no separate pause/resume yet). Real audio + `.lrc` upload remains a future enhancement.
+- **Clipboard API in headless test**: `navigator.clipboard.writeText` may fail in agent-browser (no clipboard permission); the bouquet/lyrics copy toasts may not appear in QA screenshots but the sparkle + chime feedback always fires. In a real browser with a user gesture, both succeed.
+- **Poem composer personal line is English-only**: candidate templates are English. A multilingual wish or compliment may produce an awkward mix. Acceptable for the current single-audience card.
+- **Stats export PNG**: still uses browser-default serif/sans-serif fonts rather than the loaded Google Fonts (R4 leftover). The new love-jar image export has the same limitation. A future enhancement could embed the Google Fonts via `document.fonts.ready` + `FontFace.load`.
+- **Mini-player pause is destructive**: clicking pause calls `stopPlayback()` which clears `currentTrack`. A future enhancement could add a true pause/resume that preserves track state + position.
+- **Recommended next-phase features** (in priority order):
+  1. **Vinyl: real audio + .lrc upload** — support user-uploaded audio files + .lrc lyrics for true scrub/sync, replacing the procedural melody. The mini-player + click-to-seek + copy-lyrics features would become even more meaningful.
+  2. **Vinyl mini-player: true pause/resume** — pause without losing track state, separate from full stop.
+  3. **Memory deck: per-card back-side accent texture** — extend the per-card accent to a subtle pattern (e.g., rose petals for Ch 01, sunbeams for Ch 02) in addition to the current glow.
+  4. **Stats export: embed Google Fonts in canvas** so the keepsake PNGs use the exact Playfair Display + Plus Jakarta Sans typography (R4 + R7 leftover).
+  5. **Love jar: "year ahead" companion** — a small companion reading next to the kept-thoughts tray, drawing from the wish horoscope lexicon.
+  6. **Compliments garden: chip-to-chip "grow" animation** — when a custom compliment is planted, animate it growing from the input upward into the garden (currently it just appears).
+  7. **Accessibility**: full keyboard navigation pass for the new mini-player (focus trap when visible); screen-reader announcements for scroll-spy section changes.
+  8. **Performance**: prefetch the VinylPlayer dynamic chunk on hover; lazy-mount the love-jar canvas export function until first invoked.

@@ -20,6 +20,7 @@ import StatsFinale from "@/components/birthday/StatsFinale";
 import KeyboardShortcuts from "@/components/birthday/KeyboardShortcuts";
 import FilmGrainOverlay from "@/components/birthday/FilmGrainOverlay";
 import SectionDivider from "@/components/birthday/SectionDivider";
+import ScrollSpy from "@/components/birthday/ScrollSpy";
 import { initAudio, resumeAudio, startAmbientPad } from "@/lib/audio";
 
 const TimelineSection = dynamic(() => import("@/components/birthday/TimelineSection"));
@@ -51,6 +52,7 @@ export default function Home() {
       <ConfettiRain />
       <FilmGrainOverlay />
       <ScrollProgress />
+      <ScrollSpy />
       <FloatingControls />
       <KeyboardShortcuts />
 

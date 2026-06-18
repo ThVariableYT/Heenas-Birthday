@@ -179,16 +179,29 @@ function MemoryCardItem({
             className="memory-sheen backface-hidden absolute inset-0 overflow-hidden rounded-[2rem] border border-amber-200/60 bg-gradient-to-br from-stone-900 via-stone-800 to-rose-950 p-7 text-amber-50 shadow-[0_20px_60px_-12px_rgba(0,0,0,0.4)]"
             style={{ transform: "rotateY(180deg)" }}
           >
-            <div className="flex h-full flex-col justify-between">
+            {/* Accent-tinted glow tied to the per-card accent color */}
+            <div className="memory-back-accent-glow" aria-hidden />
+
+            {/* Decorative quote marks flanking the body */}
+            <span className="memory-back-quote-mark pointer-events-none absolute left-4 top-4" aria-hidden>&ldquo;</span>
+            <span className="memory-back-quote-mark trailing pointer-events-none absolute bottom-12 right-4" aria-hidden>&ldquo;</span>
+
+            <div className="relative z-10 flex h-full flex-col justify-between">
               <div>
-                <span className="font-mono-elegant text-[0.6rem] uppercase tracking-[0.3em] text-amber-400/70">
+                <span
+                  className="font-mono-elegant text-[0.6rem] uppercase tracking-[0.3em]"
+                  style={{ color: "var(--card-accent)" }}
+                >
                   {card.back.title}
                 </span>
-                <div className="my-3 h-px w-12 bg-amber-400/40" />
+                <div
+                  className="my-3 h-px w-12"
+                  style={{ background: "var(--card-accent-soft)" }}
+                />
               </div>
 
-              <p className="font-serif-elegant text-base italic leading-relaxed text-amber-100/90">
-                &ldquo;{card.back.body}&rdquo;
+              <p className="drop-cap-quote font-serif-elegant text-base italic leading-relaxed text-amber-100/90">
+                {card.back.body}
               </p>
 
               <div className="flex items-center justify-between">
@@ -209,7 +222,7 @@ function MemoryCardItem({
                       <path d="M15 3h6v6M14 10l7-7M9 21H3v-6M10 14l-7 7" />
                     </svg>
                   </button>
-                  <span className="text-amber-400/60">✦</span>
+                  <span style={{ color: "var(--card-accent)" }} className="opacity-70">✦</span>
                 </div>
               </div>
             </div>
@@ -595,8 +608,11 @@ export default function MemoryDeck() {
               {/* Top label + counter */}
               <div className="mb-6 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <span className="text-2xl text-amber-400/80">{memoryCards[readingIndex].front.glyph}</span>
-                  <span className="font-mono-elegant text-[0.6rem] uppercase tracking-[0.4em] text-amber-400/70">
+                  <span className="text-2xl" style={{ color: "var(--card-accent)" }}>{memoryCards[readingIndex].front.glyph}</span>
+                  <span
+                    className="font-mono-elegant text-[0.6rem] uppercase tracking-[0.4em]"
+                    style={{ color: "var(--card-accent)" }}
+                  >
                     {memoryCards[readingIndex].front.label}
                   </span>
                 </div>
@@ -605,7 +621,10 @@ export default function MemoryDeck() {
                 </span>
               </div>
 
-              <div className="mb-4 h-px w-16 bg-amber-400/40" />
+              <div
+                className="mb-4 h-px w-16"
+                style={{ background: "var(--card-accent-soft)" }}
+              />
 
               {/* Title */}
               <h3 className="font-serif-elegant text-4xl font-bold leading-tight text-amber-50 sm:text-5xl">
@@ -616,9 +635,9 @@ export default function MemoryDeck() {
                 {memoryCards[readingIndex].back.title}
               </p>
 
-              {/* Body — large reading typography */}
-              <p className="mt-8 font-serif-elegant text-lg italic leading-relaxed text-amber-100/95 sm:text-xl">
-                &ldquo;{memoryCards[readingIndex].back.body}&rdquo;
+              {/* Body — large reading typography with drop-cap */}
+              <p className="drop-cap-quote mt-8 font-serif-elegant text-lg italic leading-relaxed text-amber-100/95 sm:text-xl">
+                {memoryCards[readingIndex].back.body}
               </p>
 
               <p className="mt-6 text-right font-serif-elegant text-sm text-rose-300/70">

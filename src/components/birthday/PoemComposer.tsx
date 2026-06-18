@@ -283,6 +283,51 @@ function pick<T>(pool: T[], seed: number): T {
   return pool[seed % pool.length];
 }
 
+/**
+ * Compose an optional personal "woven from your visit" line that pulls from
+ * the user's actual interactions on the card — plucked compliments (kept in
+ * localStorage at heena:plucked-compliments) and the sealed wish
+ * (heena:sealed-wish). Returns null if no personal data is available, so the
+ * UI can omit the personal-line block cleanly.
+ */
+function composePersonalLine(name: string, seed: number): string | null {
+  if (typeof window === "undefined") return null;
+  let plucked: string[] = [];
+  let wish: string | null = null;
+  try {
+    const raw = window.localStorage.getItem("heena:plucked-compliments");
+    if (raw) {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) plucked = arr.filter((x) => typeof x === "string");
+    }
+    wish = window.localStorage.getItem("heena:sealed-wish");
+  } catch {
+    // no-op
+  }
+
+  const safeName = name?.trim() || "Heena";
+  const candidates: string[] = [];
+
+  if (plucked.length > 0) {
+    const c = plucked[seed % plucked.length];
+    candidates.push(`And a true thing about you, ${safeName}: ${c}.`);
+    candidates.push(`Because you, ${safeName}, are ${c} — every single day.`);
+    candidates.push(`The garden remembers this about you: ${c}.`);
+  }
+
+  if (wish) {
+    // Snippet — first ~8 words of the wish
+    const words = wish.trim().split(/\s+/).slice(0, 8).join(" ");
+    const snippet = words.replace(/[.!?]+$/, "");
+    candidates.push(`And the wish you sealed — "${snippet}" — the year is already keeping it.`);
+    candidates.push(`Your wish, ${safeName}: ${snippet}. The candles heard.`);
+    candidates.push(`Somewhere, ${safeName}, "${snippet}" is already on its way.`);
+  }
+
+  if (candidates.length === 0) return null;
+  return candidates[seed % candidates.length];
+}
+
 /** Compose an 8-line poem for the given mood, name, and seed. */
 function composePoem(mood: Mood, name: string, seed: number): string[] {
   const pools = LEX[mood];
@@ -305,6 +350,10 @@ export default function PoemComposer({ open, onClose }: { open: boolean; onClose
   const incStat = useStatsStore((s) => s.inc);
 
   const poem = useMemo(() => composePoem(mood, name || "Heena", seed), [mood, name, seed]);
+  const personalLine = useMemo(
+    () => (open ? composePersonalLine(name || "Heena", seed) : null),
+    [open, name, seed],
+  );
   const moodCfg = useMemo(() => MOODS.find((m) => m.key === mood)!, [mood]);
 
   // Body scroll lock + Escape to close
@@ -357,6 +406,7 @@ export default function PoemComposer({ open, onClose }: { open: boolean; onClose
     const text =
       `For ${name || "Heena"} ✦\n\n` +
       poem.join("\n") +
+      (personalLine ? `\n\n${personalLine}` : "") +
       `\n\n— composed with love, on your day`;
     try {
       await navigator.clipboard.writeText(text);
@@ -510,6 +560,40 @@ export default function PoemComposer({ open, onClose }: { open: boolean; onClose
                         </button>
                       </div>
                     ))}
+
+                    {/* Personal "woven from your visit" line — appears only when
+                        the user has plucked compliments or sealed a wish. */}
+                    {personalLine && (
+                      <div className="mt-4 border-t border-amber-200/50 pt-4 dark:border-amber-300/20">
+                        <div className="group flex items-start gap-2">
+                          <span
+                            className="mt-1 text-xs"
+                            style={{ color: "var(--card-accent, #b45309)" }}
+                            aria-hidden
+                          >
+                            ✶
+                          </span>
+                          <p
+                            className="poem-line flex-1 cursor-pointer font-serif-elegant text-base italic leading-relaxed text-rose-700/90 transition-colors hover:text-rose-900 dark:text-rose-200/90 dark:hover:text-rose-100 sm:text-lg"
+                            style={{ animationDelay: `${poem.length * 0.12}s` }}
+                            onClick={() => copyLine(personalLine, poem.length)}
+                            title="Click to copy this line — woven from your visit"
+                          >
+                            {personalLine}
+                          </p>
+                          <button
+                            onClick={() => copyLine(personalLine, poem.length)}
+                            className="mt-1 shrink-0 text-[0.6rem] font-mono-elegant uppercase tracking-[0.2em] text-rose-500/60 opacity-0 transition-opacity group-hover:opacity-100 focus-ring-visible dark:text-rose-300/60"
+                            aria-label="Copy the personal line"
+                          >
+                            {copiedLine === poem.length ? "✓" : "⧉"}
+                          </button>
+                        </div>
+                        <p className="mt-1 pl-5 font-mono-elegant text-[0.5rem] uppercase tracking-[0.25em] text-stone-400 dark:text-amber-300/40">
+                          woven from your visit
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
 

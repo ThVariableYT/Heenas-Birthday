@@ -51,13 +51,33 @@ export default function VinylPlayer() {
   const [muted, setMuted] = useState(false);
   const [duration, setDuration] = useState(32);
   const [copied, setCopied] = useState(false);
+  const [sectionInView, setSectionInView] = useState(true);
   const proceduralRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const elapsedRef = useRef(0);
+  const sectionRef = useRef<HTMLElement>(null);
   const incStat = useStatsStore((s) => s.inc);
 
   useEffect(() => {
     elapsedRef.current = elapsed;
   }, [elapsed]);
+
+  // Track whether the vinyl section is in the viewport — when it isn't and
+  // music is playing, show the floating mini-player.
+  useEffect(() => {
+    const el = sectionRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (entry) setSectionInView(entry.isIntersecting);
+      },
+      { rootMargin: "-20% 0px -20% 0px", threshold: 0 },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  const showMiniPlayer = playing && currentTrack && !sectionInView;
 
   useEffect(() => {
     setMasterVolume(muted ? 0 : volume);
@@ -199,7 +219,7 @@ export default function VinylPlayer() {
   };
 
   return (
-    <section className="relative px-4 py-32">
+    <section ref={sectionRef} className="relative px-4 py-32">
       {/* Ambient star field — a quiet cosmic backdrop for the record player */}
       <div className="vinyl-star-field" aria-hidden>
         {Array.from({ length: 28 }).map((_, i) => (
@@ -512,6 +532,50 @@ export default function VinylPlayer() {
             </div>
           )}
         </motion.div>
+      </div>
+
+      {/* Floating "now playing" mini-player — appears only when music is
+          playing and the user has scrolled away from the vinyl section. */}
+      <div
+        className={`now-playing-mini ${showMiniPlayer ? "visible" : ""}`}
+        role="region"
+        aria-label={`Now playing: ${currentTrack?.name ?? ""}`}
+      >
+        <button
+          type="button"
+          onClick={() => {
+            stopPlayback();
+          }}
+          className="npm-jump"
+          aria-label="Pause playback"
+          title="Pause"
+        >
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+            <rect x="6" y="5" width="4" height="14" rx="1" />
+            <rect x="14" y="5" width="4" height="14" rx="1" />
+          </svg>
+        </button>
+        <span className="npm-disc" aria-hidden />
+        <span className="npm-eq" aria-hidden>
+          <span />
+          <span />
+          <span />
+          <span />
+        </span>
+        <span className="npm-title">{currentTrack?.name ?? ""}</span>
+        <button
+          type="button"
+          onClick={() => {
+            sectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+          }}
+          className="npm-jump"
+          aria-label="Jump back to the record player"
+          title="Back to record player"
+        >
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M12 19V5M5 12l7-7 7 7" />
+          </svg>
+        </button>
       </div>
     </section>
   );

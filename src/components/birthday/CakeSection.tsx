@@ -165,16 +165,39 @@ export default function CakeSection() {
               whisper your wish (optional)
             </span>
           </label>
-          <input
-            type="text"
-            value={wishInput}
-            onChange={(e) => setWishInput(e.target.value)}
-            maxLength={140}
-            placeholder="A wish for Heena, kept between you and the candles…"
-            className="w-full rounded-xl border border-amber-200/60 bg-white/70 px-4 py-2.5 font-serif-elegant text-sm italic text-stone-700 placeholder:text-stone-400 focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-300/40"
-          />
-          <div className="mt-1.5 text-right font-mono-elegant text-[0.55rem] text-stone-400">
-            {wishInput.length}/140
+          <div className="flex items-center gap-3">
+            <input
+              type="text"
+              value={wishInput}
+              onChange={(e) => setWishInput(e.target.value)}
+              maxLength={140}
+              placeholder="A wish for Heena, kept between you and the candles…"
+              className="w-full rounded-xl border border-amber-200/60 bg-white/70 px-4 py-2.5 font-serif-elegant text-sm italic text-stone-700 placeholder:text-stone-400 focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-300/40"
+            />
+            <div
+              className="wish-count-ring"
+              role="status"
+              aria-label={`Wish length ${wishInput.length} of 140 characters`}
+            >
+              <svg viewBox="0 0 44 44" aria-hidden>
+                <defs>
+                  <linearGradient id="wishRingGrad" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0%" stopColor="#f59e0b" />
+                    <stop offset="100%" stopColor="#f43f5e" />
+                  </linearGradient>
+                </defs>
+                <circle className="ring-bg" cx="22" cy="22" r="19" />
+                <circle
+                  className="ring-fg"
+                  cx="22"
+                  cy="22"
+                  r="19"
+                  strokeDasharray={2 * Math.PI * 19}
+                  strokeDashoffset={2 * Math.PI * 19 * (1 - wishInput.length / 140)}
+                />
+              </svg>
+              <span className="ring-label">{wishInput.length}</span>
+            </div>
           </div>
         </motion.div>
 

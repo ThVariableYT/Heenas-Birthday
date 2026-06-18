@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { jarThoughts } from "@/lib/birthday-data";
 import { sparkle } from "./SparkleCanvas";
 import { playChime } from "@/lib/audio";
@@ -12,6 +12,208 @@ type Bubble = { id: number; left: number; size: number; wobble: number; duration
 
 type KeptThought = { id: number; text: string; favorite: boolean };
 
+const W = 1080;
+const H = 1350;
+
+function roundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+function drawKeptCard(thoughts: KeptThought[], favorites: Set<number>): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
+
+  // === Background — warm amber/rose gradient ===
+  const bg = ctx.createLinearGradient(0, 0, W, H);
+  bg.addColorStop(0, "#fff7ed");
+  bg.addColorStop(0.5, "#fef3c7");
+  bg.addColorStop(1, "#fce7f3");
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
+
+  // Aurora washes
+  const aurora1 = ctx.createRadialGradient(W * 0.18, H * 0.08, 0, W * 0.18, H * 0.08, 460);
+  aurora1.addColorStop(0, "rgba(251,191,36,0.4)");
+  aurora1.addColorStop(1, "rgba(251,191,36,0)");
+  ctx.fillStyle = aurora1;
+  ctx.fillRect(0, 0, W, H);
+
+  const aurora2 = ctx.createRadialGradient(W * 0.85, H * 0.9, 0, W * 0.85, H * 0.9, 480);
+  aurora2.addColorStop(0, "rgba(244,63,94,0.32)");
+  aurora2.addColorStop(1, "rgba(244,63,94,0)");
+  ctx.fillStyle = aurora2;
+  ctx.fillRect(0, 0, W, H);
+
+  // === Double-rule border with corner flourishes ===
+  ctx.strokeStyle = "rgba(180,83,9,0.35)";
+  ctx.lineWidth = 1.5;
+  roundedRect(ctx, 40, 40, W - 80, H - 80, 24);
+  ctx.stroke();
+  ctx.strokeStyle = "rgba(180,83,9,0.2)";
+  ctx.lineWidth = 1;
+  roundedRect(ctx, 52, 52, W - 104, H - 104, 18);
+  ctx.stroke();
+
+  const drawCorner = (cx: number, cy: number, fx: boolean, fy: boolean) => {
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.scale(fx ? -1 : 1, fy ? -1 : 1);
+    ctx.strokeStyle = "rgba(180,83,9,0.55)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(0, 40);
+    ctx.lineTo(0, 8);
+    ctx.quadraticCurveTo(0, 0, 8, 0);
+    ctx.lineTo(40, 0);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(14, 14, 3, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(180,83,9,0.5)";
+    ctx.fill();
+    ctx.restore();
+  };
+  drawCorner(70, 70, false, false);
+  drawCorner(W - 70, 70, true, false);
+  drawCorner(70, H - 70, false, true);
+  drawCorner(W - 70, H - 70, true, true);
+
+  // === Header ===
+  ctx.textAlign = "center";
+  ctx.fillStyle = "rgba(180,83,9,0.7)";
+  ctx.font = "600 22px 'Plus Jakarta Sans', sans-serif";
+  ctx.fillText("• K E P T   W I T H   L O V E •", W / 2, 150);
+
+  ctx.font = "700 76px 'Playfair Display', serif";
+  const titleGrad = ctx.createLinearGradient(W / 2 - 220, 0, W / 2 + 220, 0);
+  titleGrad.addColorStop(0, "#b45309");
+  titleGrad.addColorStop(0.5, "#e11d48");
+  titleGrad.addColorStop(1, "#b45309");
+  ctx.fillStyle = titleGrad;
+  ctx.fillText("For Heena", W / 2, 240);
+
+  ctx.font = "italic 26px 'Playfair Display', serif";
+  ctx.fillStyle = "rgba(68,64,60,0.75)";
+  ctx.fillText("things i've been meaning to say", W / 2, 290);
+
+  // Ornamental divider
+  ctx.strokeStyle = "rgba(180,83,9,0.4)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(W / 2 - 120, 320);
+  ctx.lineTo(W / 2 - 18, 320);
+  ctx.moveTo(W / 2 + 18, 320);
+  ctx.lineTo(W / 2 + 120, 320);
+  ctx.stroke();
+  ctx.font = "20px serif";
+  ctx.fillStyle = "rgba(180,83,9,0.6)";
+  ctx.fillText("❋", W / 2, 327);
+
+  // === Thought cards ===
+  const gridX = 100;
+  const gridY = 380;
+  const cellW = (W - 200 - 30) / 2;
+  const cellH = 170;
+  const gap = 30;
+
+  thoughts.slice(0, 8).forEach((t, i) => {
+    const col = i % 2;
+    const row = Math.floor(i / 2);
+    const x = gridX + col * (cellW + gap);
+    const y = gridY + row * (cellH + gap);
+    const isFav = favorites.has(t.id);
+
+    // Card panel
+    roundedRect(ctx, x, y, cellW, cellH, 20);
+    const panel = ctx.createLinearGradient(x, y, x + cellW, y + cellH);
+    if (isFav) {
+      panel.addColorStop(0, "rgba(254, 242, 237, 0.95)");
+      panel.addColorStop(1, "rgba(254, 205, 211, 0.85)");
+    } else {
+      panel.addColorStop(0, "rgba(255,255,255,0.88)");
+      panel.addColorStop(1, "rgba(255,255,255,0.55)");
+    }
+    ctx.fillStyle = panel;
+    ctx.fill();
+    ctx.strokeStyle = isFav ? "rgba(225,29,72,0.35)" : "rgba(180,83,9,0.18)";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Soft accent glow
+    const glow = ctx.createRadialGradient(x + 40, y + 40, 0, x + 40, y + 40, 110);
+    glow.addColorStop(0, isFav ? "rgba(244,63,94,0.35)" : "rgba(251,191,36,0.32)");
+    glow.addColorStop(1, "transparent");
+    ctx.fillStyle = glow;
+    ctx.fill();
+
+    // Star marker for favorites
+    ctx.textAlign = "left";
+    ctx.font = "28px serif";
+    ctx.fillStyle = isFav ? "#e11d48" : "rgba(180,83,9,0.55)";
+    ctx.fillText(isFav ? "★" : "❋", x + 26, y + 52);
+
+    // Thought text — wrap manually
+    ctx.font = "italic 22px 'Playfair Display', serif";
+    ctx.fillStyle = "rgba(68,64,60,0.9)";
+    const maxWidth = cellW - 56;
+    const words = t.text.split(/\s+/);
+    const lines: string[] = [];
+    let line = "";
+    for (const w of words) {
+      const test = line ? `${line} ${w}` : w;
+      if (ctx.measureText(test).width > maxWidth && line) {
+        lines.push(line);
+        line = w;
+      } else {
+        line = test;
+      }
+    }
+    if (line) lines.push(line);
+    const visibleLines = lines.slice(0, 4);
+    visibleLines.forEach((l, li) => {
+      ctx.fillText(l, x + 28, y + 90 + li * 28);
+    });
+
+    // Tiny quote marks
+    ctx.textAlign = "right";
+    ctx.font = "italic 16px 'Playfair Display', serif";
+    ctx.fillStyle = "rgba(180,83,9,0.4)";
+    ctx.fillText("✦", x + cellW - 24, y + cellH - 18);
+  });
+
+  // === Footer ===
+  const footerY = H - 180;
+  ctx.strokeStyle = "rgba(180,83,9,0.3)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(W / 2 - 200, footerY);
+  ctx.lineTo(W / 2 + 200, footerY);
+  ctx.stroke();
+
+  ctx.textAlign = "center";
+  ctx.font = "italic 22px 'Playfair Display', serif";
+  ctx.fillStyle = "rgba(120,53,15,0.7)";
+  ctx.fillText("Gathered slowly, kept tenderly.", W / 2, footerY + 35);
+  ctx.font = "500 14px 'Plus Jakarta Sans', sans-serif";
+  ctx.fillStyle = "rgba(120,53,15,0.55)";
+  const date = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+  ctx.fillText(`gathered on ${date}`, W / 2, footerY + 65);
+
+  ctx.font = "600 16px 'Playfair Display', serif";
+  ctx.fillStyle = "rgba(180,83,9,0.5)";
+  ctx.fillText("❋  H  ❋", W / 2, footerY + 100);
+
+  return canvas;
+}
+
 export default function LoveJar() {
   const [bubbles, setBubbles] = useState<Bubble[]>([]);
   const [note, setNote] = useState(jarThoughts[0]);
@@ -19,6 +221,8 @@ export default function LoveJar() {
   const [sparkVisible, setSparkVisible] = useState(false);
   const [kept, setKept] = useState<KeptThought[]>([]);
   const [showShareToast, setShowShareToast] = useState(false);
+  const [showExportToast, setShowExportToast] = useState(false);
+  const [exportBusy, setExportBusy] = useState(false);
   const keptIdRef = useRef(0);
   const idRef = useRef(0);
   const phaseRef = useRef(0);
@@ -141,6 +345,35 @@ export default function LoveJar() {
     sparkle({ x: window.innerWidth / 2, y: window.innerHeight / 2, count: 18, kind: "rainbow" });
     playChime(784, "sine", 0.7, 0.1);
   };
+
+  const exportKeptImage = useCallback(async () => {
+    if (kept.length === 0) return;
+    setExportBusy(true);
+    try {
+      // Yield to next frame so the spinner can paint before heavy canvas work
+      await new Promise((r) => requestAnimationFrame(r));
+      const favorites = new Set(kept.filter((k) => k.favorite).map((k) => k.id));
+      const canvas = drawKeptCard(kept, favorites);
+      const blob: Blob = await new Promise((resolve) => {
+        canvas.toBlob((b) => resolve(b as Blob), "image/png", 0.95);
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `for-heena-kept-thoughts-${Date.now()}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      sparkle({ x: window.innerWidth / 2, y: window.innerHeight / 2, count: 24, kind: "rainbow" });
+      playChime(880, "sine", 0.9, 0.12);
+      setShowExportToast(true);
+      setTimeout(() => setShowExportToast(false), 2800);
+    } finally {
+      setExportBusy(false);
+    }
+  }, [kept]);
 
   return (
     <section className="relative px-4 py-32">
@@ -320,6 +553,28 @@ export default function LoveJar() {
                 </div>
                 <div className="flex items-center gap-3">
                   <button
+                    onClick={exportKeptImage}
+                    disabled={exportBusy || kept.length === 0}
+                    className="flex items-center gap-1.5 font-mono-elegant text-[0.6rem] uppercase tracking-[0.2em] text-rose-600 transition-colors hover:text-rose-800 disabled:cursor-wait disabled:opacity-50"
+                    aria-label="Download kept thoughts as a PNG keepsake"
+                    title="Download as PNG keepsake"
+                  >
+                    <svg
+                      width="11"
+                      height="11"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className={exportBusy ? "animate-spin" : ""}
+                    >
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
+                    </svg>
+                    <span>{exportBusy ? "drawing…" : "image"}</span>
+                  </button>
+                  <button
                     onClick={shareKept}
                     className="flex items-center gap-1.5 font-mono-elegant text-[0.6rem] uppercase tracking-[0.2em] text-amber-600 transition-colors hover:text-amber-800"
                     aria-label="Share kept thoughts"
@@ -390,6 +645,25 @@ export default function LoveJar() {
             <div className="glass-premium flex items-center gap-2 rounded-full px-5 py-2.5 text-sm text-stone-700 shadow-xl">
               <span className="text-amber-500">✦</span>
               <span className="font-serif-elegant italic">kept thoughts gathered — share them with someone you love</span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showExportToast && (
+          <motion.div
+            className="fixed bottom-8 left-1/2 z-[90] -translate-x-1/2"
+            initial={{ opacity: 0, y: 20, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.9 }}
+            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+            role="status"
+            aria-live="polite"
+          >
+            <div className="glass-premium flex items-center gap-2 rounded-full px-5 py-2.5 text-sm text-stone-700 shadow-xl">
+              <span className="text-rose-500">❋</span>
+              <span className="font-serif-elegant italic">keepsake composed — check your downloads</span>
             </div>
           </motion.div>
         )}

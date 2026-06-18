@@ -20,6 +20,17 @@ type Chip = {
 
 const HUES = [12, 35, 280, 160, 200, 340];
 const CUSTOM_KEY = "heena:custom-compliments";
+const PLUCKED_KEY = "heena:plucked-compliments";
+
+/** Ambient floating petal colors — soft warm tones that match the garden */
+const PETAL_COLORS = [
+  "rgba(251, 191, 36, 0.55)", // amber
+  "rgba(244, 63, 94, 0.5)",   // rose
+  "rgba(244, 114, 182, 0.5)", // pink
+  "rgba(253, 224, 71, 0.55)", // yellow
+  "rgba(217, 70, 239, 0.4)",  // fuchsia
+  "rgba(251, 113, 133, 0.5)", // light rose
+];
 
 function buildChips(custom: string[]): Chip[] {
   const all = [...compliments, ...custom];
@@ -45,16 +56,35 @@ export default function ComplimentsSection() {
   const idRef = useRef(1000);
   const incStat = useStatsStore((s) => s.inc);
 
-  // Hydrate custom compliments from localStorage on mount
+  // Ambient floating petals — generated once on mount (memoized)
+  const petals = useRef(
+    Array.from({ length: 14 }).map((_, i) => ({
+      id: i,
+      left: Math.random() * 100,
+      delay: Math.random() * 18,
+      duration: 16 + Math.random() * 12,
+      drift: (Math.random() - 0.5) * 120,
+      color: PETAL_COLORS[i % PETAL_COLORS.length],
+      scale: 0.7 + Math.random() * 0.7,
+    })),
+  ).current;
+
+  // Hydrate custom compliments + plucked history from localStorage on mount
   useEffect(() => {
     try {
       const raw = localStorage.getItem(CUSTOM_KEY);
       if (raw) {
         const arr = JSON.parse(raw) as string[];
         if (Array.isArray(arr) && arr.length > 0) {
-          // eslint-disable-next-line react-hooks/set-state-in-effect
           setCustomCompliments(arr);
           setChips(buildChips(arr));
+        }
+      }
+      const pluckedRaw = localStorage.getItem(PLUCKED_KEY);
+      if (pluckedRaw) {
+        const arr = JSON.parse(pluckedRaw) as string[];
+        if (Array.isArray(arr)) {
+          setPlucked(arr.slice(0, 6));
         }
       }
     } catch {
@@ -81,7 +111,15 @@ export default function ComplimentsSection() {
     });
     playChime(523.25 + chip.id * 30, "sine", 0.9, 0.1);
     setChips((prev) => prev.filter((c) => c.id !== chip.id));
-    setPlucked((prev) => [chip.text, ...prev].slice(0, 6));
+    setPlucked((prev) => {
+      const next = [chip.text, ...prev].slice(0, 6);
+      try {
+        localStorage.setItem(PLUCKED_KEY, JSON.stringify(next));
+      } catch {
+        // no-op
+      }
+      return next;
+    });
     setLastPlucked(chip.text);
     setTimeout(() => setLastPlucked(null), 2500);
     incStat("complimentsPlucked", 1);
@@ -178,6 +216,26 @@ export default function ComplimentsSection() {
               "radial-gradient(circle at 20% 30%, rgba(251,191,36,0.2), transparent 50%), radial-gradient(circle at 80% 70%, rgba(244,63,94,0.15), transparent 50%)",
           }}
         />
+
+        {/* Ambient floating petals — gentle warm drift across the garden */}
+        <div className="garden-petals" aria-hidden>
+          {petals.map((p) => (
+            <span
+              key={p.id}
+              className="garden-petal"
+              style={{
+                left: `${p.left}%`,
+                top: `-5%`,
+                width: `${14 * p.scale}px`,
+                height: `${14 * p.scale}px`,
+                background: p.color,
+                animationDelay: `${p.delay}s`,
+                animationDuration: `${p.duration}s`,
+                ["--drift-x" as string]: `${p.drift}px`,
+              }}
+            />
+          ))}
+        </div>
 
         <AnimatePresence>
           {chips.map((chip) => (
