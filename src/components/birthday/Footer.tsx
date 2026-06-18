@@ -1,10 +1,33 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
 import { footerSignature } from "@/lib/birthday-data";
 import { sparkle } from "./SparkleCanvas";
+import { playChime } from "@/lib/audio";
+import { useStatsStore } from "@/lib/stats-store";
 
 export default function Footer() {
+  const incStat = useStatsStore((s) => s.inc);
+  const [typed, setTyped] = useState("");
+  const [doneTyping, setDoneTyping] = useState(false);
+  const idxRef = useRef(0);
+
+  // Typewriter effect for the signature (triggers on in-view)
+  useEffect(() => {
+    const timer = setInterval(() => {
+      idxRef.current += 1;
+      if (idxRef.current >= footerSignature.length) {
+        setTyped(footerSignature);
+        setDoneTyping(true);
+        clearInterval(timer);
+        return;
+      }
+      setTyped(footerSignature.slice(0, idxRef.current));
+    }, 45);
+    return () => clearInterval(timer);
+  }, []);
+
   const celebrate = (e: React.MouseEvent) => {
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     sparkle({
@@ -13,6 +36,8 @@ export default function Footer() {
       count: 30,
       kind: "rainbow",
     });
+    incStat("sparklesFired", 1);
+    playChime(783.99, "sine", 0.6, 0.1);
   };
 
   return (
@@ -44,7 +69,15 @@ export default function Footer() {
           </motion.button>
 
           <p className="max-w-md font-serif-elegant text-lg italic leading-relaxed text-stone-600">
-            &ldquo;{footerSignature}&rdquo;
+            &ldquo;{typed}
+            <motion.span
+              className="ml-0.5 inline-block w-0.5 -translate-y-0.5 text-amber-500"
+              animate={{ opacity: doneTyping ? [1, 0, 1] : [1, 0] }}
+              transition={{ duration: doneTyping ? 1.4 : 0.6, repeat: Infinity, ease: "easeInOut" }}
+            >
+              |
+            </motion.span>
+            &rdquo;
           </p>
 
           <div className="flex items-center gap-3">

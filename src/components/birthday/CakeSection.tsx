@@ -6,10 +6,13 @@ import { sparkle } from "./SparkleCanvas";
 import { fireConfetti } from "./ConfettiRain";
 import { playChime } from "@/lib/audio";
 import { wishMessages } from "@/lib/birthday-data";
+import { useStatsStore } from "@/lib/stats-store";
 
 type Candle = { id: number; lit: boolean };
+type SealedWish = { text: string; at: number };
 
 const STORAGE_KEY = "heena:sealed-wish";
+const ALBUM_KEY = "heena:wish-album";
 
 export default function CakeSection() {
   const [candles, setCandles] = useState<Candle[]>([
@@ -21,7 +24,11 @@ export default function CakeSection() {
   const [wishInput, setWishInput] = useState("");
   const [sealedWish, setSealedWish] = useState<string | null>(null);
   const [hasSealedBefore, setHasSealedBefore] = useState(false);
+  const [album, setAlbum] = useState<SealedWish[]>([]);
+  const [smoke, setSmoke] = useState<{ id: number; x: number }[]>([]);
   const sectionRef = useRef<HTMLDivElement>(null);
+  const smokeIdRef = useRef(0);
+  const incStat = useStatsStore((s) => s.inc);
 
   useEffect(() => {
     try {
@@ -31,38 +38,60 @@ export default function CakeSection() {
         setSealedWish(saved);
         setHasSealedBefore(true);
       }
+      const albumRaw = localStorage.getItem(ALBUM_KEY);
+      if (albumRaw) {
+        setAlbum(JSON.parse(albumRaw) as SealedWish[]);
+      }
     } catch {
       // no-op
     }
   }, []);
 
-  const blowOut = (id: number, e: React.MouseEvent) => {
-    setCandles((prev) => {
-      const next = prev.map((c) => (c.id === id ? { ...c, lit: false } : c));
-      if (next.every((c) => !c.lit)) {
-        setTimeout(() => {
-          setShowWish(true);
-          const wish = wishInput.trim() || wishMessages[0];
-          setSealedWish(wish);
-          try {
-            localStorage.setItem(STORAGE_KEY, wish);
-          } catch {
-            // no-op
-          }
-          playChime(880, "sine", 1.4, 0.16);
-          sparkle({
-            x: window.innerWidth / 2,
-            y: window.innerHeight / 2,
-            count: 50,
-            kind: "rainbow",
-          });
-          fireConfetti(140);
-        }, 400);
-      }
-      return next;
+  // When all candles go out, seal the wish + celebrate (runs once per transition)
+  const allOut = candles.every((c) => !c.lit);
+  useEffect(() => {
+    if (!allOut) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setShowWish(true);
+    const wish = wishInput.trim() || wishMessages[0];
+    setSealedWish(wish);
+    try {
+      localStorage.setItem(STORAGE_KEY, wish);
+      const entry: SealedWish = { text: wish, at: Date.now() };
+      setAlbum((prev) => {
+        const nextAlbum = [entry, ...prev].slice(0, 12);
+        localStorage.setItem(ALBUM_KEY, JSON.stringify(nextAlbum));
+        return nextAlbum;
+      });
+    } catch {
+      // no-op
+    }
+    incStat("wishesSealed", 1);
+    incStat("sparklesFired", 1);
+    playChime(880, "sine", 1.4, 0.16);
+    sparkle({
+      x: window.innerWidth / 2,
+      y: window.innerHeight / 2,
+      count: 50,
+      kind: "rainbow",
     });
+    fireConfetti(140);
+  }, [allOut]);
+
+  const blowOut = (id: number, e: React.MouseEvent) => {
+    const target = candles.find((c) => c.id === id);
+    if (!target?.lit) return;
+    setCandles((prev) => prev.map((c) => (c.id === id ? { ...c, lit: false } : c)));
+    incStat("candlesBlown", 1);
 
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    // Spawn rising smoke wisps at the candle position
+    const smokeId = smokeIdRef.current++;
+    setSmoke((prev) => [...prev, { id: smokeId, x: rect.left + rect.width / 2 }]);
+    setTimeout(() => {
+      setSmoke((prev) => prev.filter((s) => s.id !== smokeId));
+    }, 2200);
+
     sparkle({ x: rect.left + rect.width / 2, y: rect.top, count: 20, kind: "smoke" });
     sparkle({ x: rect.left + rect.width / 2, y: rect.top, count: 12, kind: "gold" });
     playChime(587.33, "triangle", 1.0, 0.14);
@@ -252,6 +281,108 @@ export default function CakeSection() {
               </motion.button>
             </motion.div>
           )}
+        </AnimatePresence>
+
+        {/* Wish album — a small gallery of previously sealed wishes */}
+        <AnimatePresence>
+          {album.length > 0 && (
+            <motion.div
+              className="mt-14 w-full max-w-2xl"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+            >
+              <div className="glass-card rounded-3xl p-6">
+                <div className="mb-4 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-amber-500">✸</span>
+                    <span className="font-mono-elegant text-[0.6rem] uppercase tracking-[0.3em] text-amber-700/70">
+                      wish album
+                    </span>
+                    <span className="ml-1 rounded-full bg-amber-100 px-2 py-0.5 font-mono-elegant text-[0.6rem] font-bold text-amber-700">
+                      {album.length}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setAlbum([]);
+                      try {
+                        localStorage.removeItem(ALBUM_KEY);
+                      } catch {
+                        // no-op
+                      }
+                      playChime(294, "sine", 0.5, 0.08);
+                    }}
+                    className="font-mono-elegant text-[0.6rem] uppercase tracking-[0.2em] text-stone-400 transition-colors hover:text-rose-500"
+                  >
+                    clear
+                  </button>
+                </div>
+                <div className="no-scrollbar flex max-h-52 flex-col gap-2 overflow-y-auto pr-1">
+                  <AnimatePresence initial={false}>
+                    {album.map((w, i) => (
+                      <motion.div
+                        key={`${w.at}-${i}`}
+                        initial={{ opacity: 0, x: -20, height: 0 }}
+                        animate={{ opacity: 1, x: 0, height: "auto" }}
+                        exit={{ opacity: 0, x: 20, height: 0 }}
+                        transition={{ duration: 0.3 }}
+                        className="flex items-start gap-3 rounded-xl bg-white/50 px-3 py-2"
+                      >
+                        <span className="mt-0.5 text-amber-400">✦</span>
+                        <div className="flex-1">
+                          <p className="font-serif-elegant text-sm italic text-stone-600">
+                            &ldquo;{w.text}&rdquo;
+                          </p>
+                          <span className="font-mono-elegant text-[0.5rem] uppercase tracking-[0.2em] text-stone-400">
+                            {new Date(w.at).toLocaleDateString(undefined, {
+                              month: "short",
+                              day: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                            {i === 0 ? " · most recent" : ""}
+                          </span>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* Rising smoke wisps — fixed positioning at the blown candle location */}
+      <div className="pointer-events-none fixed inset-0 z-40">
+        <AnimatePresence>
+          {smoke.map((s) => (
+            <motion.div
+              key={s.id}
+              className="absolute"
+              style={{ left: s.x, top: "30%" }}
+              initial={{ opacity: 0, scale: 0.4, y: 0 }}
+              animate={{
+                opacity: [0, 0.45, 0.25, 0],
+                scale: [0.4, 1.2, 1.8, 2.2],
+                y: [0, -40, -90, -150],
+                x: [0, -8, 6, -3],
+              }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 2.2, ease: "easeOut" }}
+            >
+              <div
+                className="h-10 w-10 rounded-full"
+                style={{
+                  background:
+                    "radial-gradient(circle, rgba(120,113,108,0.5) 0%, rgba(120,113,108,0.2) 50%, transparent 80%)",
+                  filter: "blur(8px)",
+                }}
+              />
+            </motion.div>
+          ))}
         </AnimatePresence>
       </div>
     </section>

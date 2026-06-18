@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { tracks, type Track } from "@/lib/birthday-data";
 import { sparkle } from "./SparkleCanvas";
 import { playChime, startProceduralMelody, setMasterVolume, getMasterVolume } from "@/lib/audio";
+import { useStatsStore } from "@/lib/stats-store";
 
 function parseDuration(d: string): number {
   const m = d.match(/(\d+):(\d+)/);
@@ -48,8 +49,10 @@ export default function VinylPlayer() {
   const [volume, setVolume] = useState(0.35);
   const [muted, setMuted] = useState(false);
   const [duration, setDuration] = useState(32);
+  const [copied, setCopied] = useState(false);
   const proceduralRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const elapsedRef = useRef(0);
+  const incStat = useStatsStore((s) => s.inc);
 
   useEffect(() => {
     elapsedRef.current = elapsed;
@@ -87,6 +90,12 @@ export default function VinylPlayer() {
     if (currentTrack?.name === track.name && playing) {
       stopPlayback();
       return;
+    }
+
+    // Count a newly-selected track (only when switching to a different one or starting fresh)
+    if (!currentTrack || currentTrack.name !== track.name) {
+      incStat("tracksPlayed", 1);
+      incStat("sparklesFired", 1);
     }
 
     if (proceduralRef.current) {
@@ -155,6 +164,28 @@ export default function VinylPlayer() {
 
   const fmt = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
   const progress = currentTrack ? Math.min(elapsed / duration, 1) : 0;
+
+  const copyLyrics = async () => {
+    if (!currentTrack) return;
+    const text =
+      `${currentTrack.name}\n${currentTrack.mood}\n\n` +
+      currentTrack.lyrics.map((l) => l.text).join("\n") +
+      `\n\n— for Heena`;
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+      sparkle({
+        x: window.innerWidth / 2,
+        y: window.innerHeight / 2,
+        count: 14,
+        kind: "gold",
+      });
+      playChime(659.25, "sine", 0.5, 0.08);
+    } catch {
+      // no-op
+    }
+  };
 
   return (
     <section className="relative px-4 py-32">
@@ -327,7 +358,17 @@ export default function VinylPlayer() {
                       {indexStr}
                     </span>
                     <div>
-                      <div className="font-bold text-stone-800">{track.name}</div>
+                      <div className="flex items-center gap-2 font-bold text-stone-800">
+                        {isActive && (
+                          <motion.span
+                            className="inline-block h-1.5 w-1.5 rounded-full bg-amber-500"
+                            animate={{ scale: [1, 1.6, 1], opacity: [0.5, 1, 0.5] }}
+                            transition={{ duration: 1, repeat: Infinity }}
+                            aria-hidden
+                          />
+                        )}
+                        {track.name}
+                      </div>
                       <div className="font-mono-elegant text-[0.65rem] uppercase tracking-[0.2em] text-stone-400">
                         {track.mood} · {track.duration}
                       </div>
@@ -361,11 +402,32 @@ export default function VinylPlayer() {
               <motion.div
                 className="glass-card overflow-hidden rounded-2xl"
                 initial={{ maxHeight: 0, opacity: 0, marginTop: 0 }}
-                animate={{ maxHeight: 280, opacity: 1, marginTop: 16 }}
+                animate={{ maxHeight: 320, opacity: 1, marginTop: 16 }}
                 exit={{ maxHeight: 0, opacity: 0, marginTop: 0 }}
                 transition={{ duration: 0.4 }}
               >
-                <div className="no-scrollbar h-full overflow-y-auto p-5" style={{ maxHeight: 280 }}>
+                <div className="flex items-center justify-between border-b border-amber-200/40 px-5 py-3">
+                  <div className="flex items-center gap-2">
+                    <motion.span
+                      className="text-amber-500"
+                      animate={{ scale: [1, 1.3, 1], opacity: [0.6, 1, 0.6] }}
+                      transition={{ duration: 1.2, repeat: Infinity }}
+                    >
+                      ♪
+                    </motion.span>
+                    <span className="font-mono-elegant text-[0.6rem] uppercase tracking-[0.3em] text-amber-700/70">
+                      now playing · {currentTrack.name}
+                    </span>
+                  </div>
+                  <button
+                    onClick={copyLyrics}
+                    className="flex items-center gap-1.5 rounded-full border border-amber-300/60 bg-white/70 px-2.5 py-1 font-mono-elegant text-[0.5rem] uppercase tracking-[0.2em] text-amber-700 transition-colors hover:bg-amber-50 focus-ring-visible"
+                    aria-label="Copy lyrics to clipboard"
+                  >
+                    <span>{copied ? "✓ copied" : "⧉ copy lyrics"}</span>
+                  </button>
+                </div>
+                <div className="no-scrollbar overflow-y-auto p-5" style={{ maxHeight: 240 }}>
                   {currentTrack.lyrics.map((line, i) => (
                     <div
                       key={i}

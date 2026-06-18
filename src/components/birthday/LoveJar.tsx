@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { jarThoughts } from "@/lib/birthday-data";
 import { sparkle } from "./SparkleCanvas";
 import { playChime } from "@/lib/audio";
+import { useStatsStore } from "@/lib/stats-store";
 
 type Bubble = { id: number; left: number; size: number; wobble: number; duration: number };
 
@@ -22,6 +23,8 @@ export default function LoveJar() {
   const impactRef = useRef(0);
   const [pathD, setPathD] = useState("");
   const jarRef = useRef<HTMLDivElement>(null);
+  const incStat = useStatsStore((s) => s.inc);
+  const setStat = useStatsStore((s) => s.set);
 
   useEffect(() => {
     let raf = 0;
@@ -92,10 +95,13 @@ export default function LoveJar() {
       const next = [{ id: keptIdRef.current++, text: drawn }, ...prev];
       return next.slice(0, 8);
     });
+    incStat("thoughtsKept", 1);
+    incStat("sparklesFired", 1);
   };
 
   const clearKept = () => {
     setKept([]);
+    setStat("thoughtsKept", 0);
     playChime(330, "sine", 0.5, 0.08);
   };
 

@@ -1,10 +1,14 @@
 "use client";
 
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
-import { useRef, useState, useCallback } from "react";
+import { useRef, useState, useCallback, useEffect } from "react";
 import { memoryCards, type MemoryCard } from "@/lib/birthday-data";
 import { sparkle } from "./SparkleCanvas";
 import { playChime } from "@/lib/audio";
+import { useStatsStore } from "@/lib/stats-store";
+
+const FAV_KEY = "heena:memory-favorites";
+const REVEALED_KEY = "heena:memory-revealed";
 
 function MemoryCardItem({
   card,
@@ -198,16 +202,59 @@ export default function MemoryDeck() {
   const [flippedSet, setFlippedSet] = useState<Set<number>>(new Set());
   const [favoritesSet, setFavoritesSet] = useState<Set<number>>(new Set());
   const [order, setOrder] = useState<number[]>(memoryCards.map((_, i) => i));
+  const incStat = useStatsStore((s) => s.inc);
+  const setStat = useStatsStore((s) => s.set);
+
+  // Hydrate favorites + revealed from localStorage
+  useEffect(() => {
+    try {
+      const favRaw = localStorage.getItem(FAV_KEY);
+      if (favRaw) {
+        const arr = JSON.parse(favRaw) as number[];
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setFavoritesSet(new Set(arr));
+      }
+      // Don't auto-restore revealed set — let the user re-flip; but mark them in stats
+      const revRaw = localStorage.getItem(REVEALED_KEY);
+      if (revRaw) {
+        const arr = JSON.parse(revRaw) as number[];
+        setStat("memoriesRevealed", arr.length);
+      }
+    } catch {
+      // no-op
+    }
+  }, [setStat]);
+
+  // Persist favorites whenever they change
+  useEffect(() => {
+    try {
+      localStorage.setItem(FAV_KEY, JSON.stringify(Array.from(favoritesSet)));
+    } catch {
+      // no-op
+    }
+    setStat("favoritesPinned", favoritesSet.size);
+  }, [favoritesSet, setStat]);
+
+  // Persist revealed + sync stats
+  useEffect(() => {
+    try {
+      localStorage.setItem(REVEALED_KEY, JSON.stringify(Array.from(flippedSet)));
+    } catch {
+      // no-op
+    }
+    setStat("memoriesRevealed", flippedSet.size);
+  }, [flippedSet, setStat]);
 
   const handleFlip = useCallback(
     (cardId: number, next: boolean, rect: DOMRect, index: number) => {
+      const wasRevealed = flippedSet.has(cardId);
       setFlippedSet((prev) => {
         const nextSet = new Set(prev);
         if (next) nextSet.add(cardId);
         else nextSet.delete(cardId);
         return nextSet;
       });
-      if (next) {
+      if (next && !wasRevealed) {
         sparkle({
           x: rect.left + rect.width / 2,
           y: rect.top + rect.height / 2,
@@ -215,33 +262,38 @@ export default function MemoryDeck() {
           kind: "rainbow",
         });
         playChime(440 + index * 40, "sine", 0.8, 0.1);
-      } else {
+        incStat("sparklesFired", 1);
+      } else if (!next) {
         playChime(330, "sine", 0.6, 0.08);
       }
     },
-    [],
+    [flippedSet, incStat],
   );
 
-  const toggleFavorite = useCallback((cardId: number, rect: DOMRect) => {
-    setFavoritesSet((prev) => {
-      const next = new Set(prev);
-      if (next.has(cardId)) next.delete(cardId);
-      else next.add(cardId);
-      return next;
-    });
-    const isFav = favoritesSet.has(cardId);
-    if (!isFav) {
-      sparkle({
-        x: rect.left + rect.width / 2,
-        y: rect.top + rect.height / 2,
-        count: 14,
-        kind: "rose",
+  const toggleFavorite = useCallback(
+    (cardId: number, rect: DOMRect) => {
+      const willFavorite = !favoritesSet.has(cardId);
+      setFavoritesSet((prev) => {
+        const next = new Set(prev);
+        if (next.has(cardId)) next.delete(cardId);
+        else next.add(cardId);
+        return next;
       });
-      playChime(659.25, "sine", 0.6, 0.1);
-    } else {
-      playChime(392, "sine", 0.4, 0.08);
-    }
-  }, [favoritesSet]);
+      if (willFavorite) {
+        sparkle({
+          x: rect.left + rect.width / 2,
+          y: rect.top + rect.height / 2,
+          count: 14,
+          kind: "rose",
+        });
+        playChime(659.25, "sine", 0.6, 0.1);
+        incStat("sparklesFired", 1);
+      } else {
+        playChime(392, "sine", 0.4, 0.08);
+      }
+    },
+    [favoritesSet, incStat],
+  );
 
   const sortedOrder = [...order].sort((a, b) => {
     const aFav = favoritesSet.has(memoryCards[a].id) ? 0 : 1;

@@ -14,6 +14,18 @@ const FLOATING_GLYPHS = [
   { glyph: "✦", top: "80%", left: "20%", size: "text-2xl", color: "text-rose-400/40", delay: 2.5 },
 ];
 
+// Constellation dots — tiny glowing points scattered around the title
+const CONSTELLATION = [
+  { top: "30%", left: "30%", delay: 0 },
+  { top: "35%", left: "70%", delay: 0.8 },
+  { top: "45%", left: "25%", delay: 1.6 },
+  { top: "50%", left: "75%", delay: 2.4 },
+  { top: "55%", left: "40%", delay: 0.4 },
+  { top: "60%", left: "60%", delay: 1.2 },
+  { top: "40%", left: "50%", delay: 2.0 },
+  { top: "65%", left: "45%", delay: 0.6 },
+];
+
 export default function HeroSection() {
   const ref = useRef<HTMLDivElement>(null);
 
@@ -61,6 +73,16 @@ export default function HeroSection() {
         >
           {g.glyph}
         </motion.span>
+      ))}
+
+      {/* Constellation dots — tiny twinkling stars near the title */}
+      {CONSTELLATION.map((c, i) => (
+        <span
+          key={i}
+          className="constellation-dot pointer-events-none"
+          style={{ top: c.top, left: c.left, animationDelay: `${c.delay}s` }}
+          aria-hidden
+        />
       ))}
 
       <motion.div

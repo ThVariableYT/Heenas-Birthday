@@ -5,28 +5,39 @@ import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
 import { startAmbientPad, stopAmbientPad, playChime } from "@/lib/audio";
 import { sparkle } from "./SparkleCanvas";
+import { useStatsStore } from "@/lib/stats-store";
 
 export default function FloatingControls() {
   const [ambientOn, setAmbientOn] = useState(false);
   const [shared, setShared] = useState(false);
   const [mounted, setMounted] = useState(false);
   const { theme, setTheme } = useTheme();
+  const incStat = useStatsStore((s) => s.inc);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
   }, []);
 
-  const toggleAmbient = () => {
+  // Single source of truth for ambient pad start/stop — runs whenever ambientOn changes.
+  // On first mount ambientOn is false, so stopAmbientPad() is a harmless no-op.
+  useEffect(() => {
     if (ambientOn) {
-      stopAmbientPad();
-      setAmbientOn(false);
-    } else {
       startAmbientPad();
-      setAmbientOn(true);
       playChime(523.25, "sine", 0.8, 0.1);
+    } else {
+      stopAmbientPad();
     }
-  };
+  }, [ambientOn]);
+
+  // Listen for keyboard-driven ambient toggle requests (M key via KeyboardShortcuts)
+  useEffect(() => {
+    const onReq = () => setAmbientOn((prev) => !prev);
+    window.addEventListener("heena:toggle-ambient", onReq);
+    return () => window.removeEventListener("heena:toggle-ambient", onReq);
+  }, []);
+
+  const toggleAmbient = () => setAmbientOn((prev) => !prev);
 
   const burst = () => {
     sparkle({
@@ -36,6 +47,7 @@ export default function FloatingControls() {
       kind: "rainbow",
     });
     playChime(880, "sine", 1.0, 0.12);
+    incStat("sparklesFired", 1);
   };
 
   const toggleTheme = () => {

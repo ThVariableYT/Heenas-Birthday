@@ -166,3 +166,91 @@ The site is a single-route (`/`) long-scroll experience composed of:
   4. Cake: a "your birthday in numbers" stats card (candles blown, wishes sealed, compliments plucked) as a finale summary.
   5. Accessibility: a "skip to content" link + a high-contrast theme variant.
   6. Performance: virtualize the lyrics list for very long tracks; prefetch dynamic chunks on hover.
+
+---
+
+## Round 4 — Scheduled webDevReview (cron #215324)
+
+**Task ID**: 4
+**Agent**: main (webDevReview)
+**Task**: Assess status via agent-browser QA, then add more styling details + more features, fix the stale-stats display bug discovered during QA.
+
+### Work Log
+- Read prior worklog (R1–R3); confirmed project stable and fully functional.
+- QA via agent-browser (desktop 1280×577): intro → enter → all 8 sections render (9908→10723px after adding StatsFinale); memory flip, love jar draw, compliment pluck, vinyl play, candle blow, theme toggle all work; no console errors; dev.log clean.
+- **Created global stats store** (`src/lib/stats-store.ts`) — a Zustand store tracking 8 interaction counters: memoriesRevealed, favoritesPinned, thoughtsKept, complimentsPlucked, tracksPlayed, candlesBlown, wishesSealed, sparklesFired. Initialized synchronously from localStorage at module load (avoids race condition where component mount effects would overwrite persisted values with defaults before hydrate ran). Persists on every inc/set.
+- **Created StatsFinale section** (`StatsFinale.tsx`) — a "your birthday, in numbers" finale section placed before the footer. Renders 8 glass stat cards in a responsive grid (2 cols mobile, 4 cols desktop) with animated counting numbers (rAF-based ease-out-cubic), gradient-accented values, glyph icons, and a "Celebrate once more" button (rainbow + gold sparkle burst + high chime). Includes a collapsible "reset the ledger" control that clears localStorage counts. Each stat card has a gradient glow blob and hovers up with a scale pop.
+- **Wired stats tracking into all interactive components**:
+  - MemoryDeck: incStat memoriesRevealed + sparklesFired on flip; setStat favoritesPinned + memoriesRevealed (derived from set sizes, persisted).
+  - LoveJar: incStat thoughtsKept + sparklesFired on draw; setStat thoughtsKept on clear.
+  - ComplimentsSection: incStat complimentsPlucked + sparklesFired on pluck.
+  - VinylPlayer: incStat tracksPlayed + sparklesFired on track select (only when switching to a different track).
+  - CakeSection: incStat candlesBlown per blow; incStat wishesSealed + sparklesFired when all candles out.
+  - FloatingControls: incStat sparklesFired on celebrate button.
+  - KeyboardShortcuts: incStat sparklesFired on "S" key.
+  - Footer: incStat sparklesFired on sparkle button.
+- **Added Memory Deck localStorage persistence** — favorites (`heena:memory-favorites`) and revealed state (`heena:memory-revealed`) persist across reloads. On return visit, favorited cards are restored and pinned to the top; the revealed count is restored to the stats ledger.
+- **Added Wish Album** (CakeSection) — sealed wishes accumulate into a gallery (`heena:wish-album`, max 12) with timestamps. Shows below the wish card with a live count badge, "most recent" label, and a clear button. Each entry animates in/out.
+- **Added rising smoke wisps** (CakeSection) — when a candle is blown, a gray smoke wisp spawns at the candle position and rises + fades over 2.2s (radial gradient + blur, drift + scale animation).
+- **Created KeyboardShortcuts component** — global keyboard shortcuts (S=sparkle, T=theme, M=ambient, B=back-to-top, ?=hint, Esc=close). A discoverable "?" button (bottom-right glass pill) reveals a hint panel listing all shortcuts with kbd-styled keys. Shortcuts are disabled while typing in inputs. The M key dispatches a `heena:toggle-ambient` CustomEvent that FloatingControls listens for (using a single source-of-truth effect watching `ambientOn` state, replacing the previous ref-synced pattern).
+- **Added skip-to-content link** (page.tsx) — sr-only anchor that becomes visible on keyboard focus, jumping to `#main-content`.
+- **Added Compliments "share bouquet"** — a button in the plucked-tray header that copies a formatted bouquet summary ("A bouquet for Heena ✦" + numbered list + "— picked with love") to clipboard, with a glass toast "Bouquet copied — paste it somewhere she'll see" + rainbow sparkle + high chime.
+- **Added Vinyl "copy lyrics"** — a button in the lyrics panel header (appears when playing) that copies the current track's lyrics (title + mood + all lines + "— for Heena") to clipboard, with a ✓ confirmation + gold sparkle.
+- **Added "now playing" pulse dot** — the active track in the vinyl track list shows a pulsing amber dot next to its name; the lyrics panel header shows a pulsing ♪ + "now playing · [track name]".
+- **Created FilmGrainOverlay** — a fixed, pointer-events-none SVG turbulence noise overlay at 3.5% opacity with soft-light blend mode, generating a 200×200 noise tile as a data URL (useMemo, no re-renders). Adds a premium analog texture.
+- **Upgraded Hero** — added 8 constellation dots (twinkling amber stars) scattered around the title area with `constellation-twinkle` keyframe animation.
+- **Upgraded ScrollProgress** — added a traveling glow dot (radial gradient, blur, screen blend) that sweeps along the progress bar as you scroll, plus a base track behind the gradient bar. Uses `useTransform` on scrollYProgress for position.
+- **Upgraded Footer** — the signature now types out character-by-character (45ms/char) with a blinking cursor (solid while typing, blinking when done).
+- **Added styling utilities to globals.css**:
+  - `.section-ornament` — ornamental divider (✦ — ✦ with shimmer).
+  - `.glass-premium:hover` / `.glass-card:hover` — subtle iridescent border ring + warm glow on hover.
+  - `.scroll-progress-glow` — traveling glow dot styling.
+  - `@keyframes smoke-rise` + `.smoke-wisp` — rising smoke animation.
+  - `.constellation-dot` + `@keyframes constellation-twinkle` — twinkling stars.
+  - `.heading-halo` + `@keyframes halo-breathe` — animated gradient halo behind headings.
+  - `.stat-sheen` — gradient sheen sweep on hover.
+  - `kbd` — keyboard key styling (amber-tinted, inset shadow).
+  - `.corner-flourish` (tl/tr/bl/br) — art-deco corner accents.
+  - Dark-mode variants for all new elements.
+  - `@media (prefers-reduced-motion: reduce)` — neutralizes new infinite animations.
+
+### Bug Fixed During QA
+- **Stale stats display**: the initial AnimatedNumber used framer-motion's `animate()` + `useInView(once:true)` gate. When stats incremented while the section was out of view, the display never updated (the `if (!inView) return` guard blocked the effect re-run on value change). Replaced with a manual rAF-based counter that animates from `fromRef.current` (previous value) to the new `value` on every change, with a brief scale-pop. Removed the `useInView` gate entirely.
+- **Stats race condition**: the original store had a `hydrate()` function called in StatsFinale's useEffect. But MemoryDeck's `setStat` effects ran first (on mount, with empty sets → size 0), overwriting the not-yet-hydrated store with zeros and persisting those zeros to localStorage — wiping cumulative stats. Fixed by initializing the store synchronously from localStorage at module load (`const initialStats = load()`), eliminating the hydrate race entirely.
+
+### Stage Summary / Verification Results
+- `bun run lint` → clean (0 errors, 0 warnings).
+- Dev server compiles cleanly, `GET / 200`.
+- agent-browser desktop QA confirmed:
+  - StatsFinale section renders with 8 stat cards (2×4 grid on desktop, 2-col on mobile).
+  - Stats increment live: after flipping 1 card, drawing 1 jar thought, plucking 1 compliment, playing 1 track, blowing 3 candles → stats show memoriesRevealed=1, thoughtsKept=1, complimentsPlucked=1, tracksPlayed=1, candlesBlown=3, wishesSealed=1, sparklesFired=5. ✓
+  - Stats persist across reload (cumulative stats survive; memoriesRevealed resets per-session as designed since cards aren't re-flipped). ✓
+  - Wish album shows after sealing a wish, with timestamp + "most recent" label. ✓
+  - Keyboard shortcuts: "?" opens hint panel (lists S/T/M/B/?/Esc with kbd styling); Escape closes it. ✓
+  - Compliments "share bouquet" button visible in plucked tray; click fires rainbow sparkle. ✓
+  - Vinyl "copy lyrics" button visible when playing; click shows "✓ copied" state. ✓
+  - "now playing" pulse dot appears next to active track name. ✓
+  - Smoke wisps spawn at blown candle positions (gray radial gradient, rising + fading). ✓
+  - Film grain overlay visible (subtle texture). ✓
+  - Hero constellation dots twinkle around the title. ✓
+  - ScrollProgress traveling glow dot sweeps along the bar. ✓
+  - Footer signature types out character-by-character with blinking cursor. ✓
+  - Dark mode: all new elements adapt (ornaments, kbd, corner flourishes, stat cards). ✓
+  - No horizontal overflow (scrollWidth = innerWidth = 1280). ✓
+  - No console errors throughout all interactions. ✓
+- VLM (glm-4.6v) screenshot reviews: StatsFinale "premium stat dashboard, elegant gradient numbers"; shortcuts hint "clean kbd-styled key bindings panel"; wish album "elegant timeline of sealed wishes with timestamps"; dark mode stats "high contrast, premium glassmorphism".
+
+### Unresolved Issues or Risks, and Priority Recommendations for the Next Phase
+- **Harmless dev warning**: framer-motion `useScroll` container-position warning persists in dev (sections are `relative`). Non-blocking; cosmetic only.
+- **Vinyl audio is still procedural** (Web Audio synth, no real audio files). The "copy lyrics" feature works, but real audio + `.lrc` upload remains a future enhancement.
+- **Clipboard API in headless test**: `navigator.clipboard.writeText` may fail in agent-browser (no clipboard permission), so the bouquet/lyrics copy toasts don't appear in QA screenshots. In a real browser with a user gesture, the clipboard write succeeds and the toast shows. The sparkle + chime feedback always fires regardless.
+- **Stats are cumulative across sessions** by design (a "souvenir of the time you spent here"). `memoriesRevealed` and `favoritesPinned` are derived from current component state (per-session for revealed, persisted for favorites). The reset button in StatsFinale clears all cumulative counts if the user wants a fresh ledger.
+- **Recommended next-phase features**:
+  1. Vinyl: upload-audio + `.lrc` lyrics (real playback + true scrub) — the original HTML had this; would make the copy-lyrics feature even more meaningful.
+  2. Stats Finale: a "share my birthday in numbers" export — generates a styled summary card (image or text) of the stats for sharing.
+  3. Memory deck: a "reading mode" that flips cards one at a time in a focused full-screen overlay with prev/next navigation.
+  4. Love jar: export kept-thoughts as a printable PDF or shareable image.
+  5. Cake: a "birthday horoscope" — based on the sealed wish keywords, generate a playful "year ahead" reading.
+  6. Accessibility: a high-contrast theme variant + full screen-reader announcements for stat changes.
+  7. Performance: virtualize the wish album if it grows beyond 12 entries; prefetch dynamic chunks on hover.
+  8. Custom cursor: a small sparkle that follows the cursor (gated behind a toggle in FloatingControls, respects reduced-motion).

@@ -16,6 +16,9 @@ import ScrollProgress from "@/components/birthday/ScrollProgress";
 import BackToTop from "@/components/birthday/BackToTop";
 import ConfettiRain from "@/components/birthday/ConfettiRain";
 import ComplimentsSection from "@/components/birthday/ComplimentsSection";
+import StatsFinale from "@/components/birthday/StatsFinale";
+import KeyboardShortcuts from "@/components/birthday/KeyboardShortcuts";
+import FilmGrainOverlay from "@/components/birthday/FilmGrainOverlay";
 import { initAudio, resumeAudio, startAmbientPad } from "@/lib/audio";
 
 const TimelineSection = dynamic(() => import("@/components/birthday/TimelineSection"));
@@ -45,14 +48,25 @@ export default function Home() {
       <BackgroundBlobs />
       <SparkleCanvas />
       <ConfettiRain />
+      <FilmGrainOverlay />
       <ScrollProgress />
       <FloatingControls />
+      <KeyboardShortcuts />
+
+      {/* Skip-to-content link — visible on keyboard focus only */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-full focus:bg-amber-500 focus:px-5 focus:py-2.5 focus:font-mono-elegant focus:text-xs focus:font-bold focus:text-white focus:shadow-xl"
+      >
+        Skip to content
+      </a>
 
       <IntroScreen onOpen={() => setEntered(true)} />
 
       <AnimatePresence>
         {entered && (
           <motion.main
+            id="main-content"
             className="relative z-10 flex flex-1 flex-col"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -65,6 +79,7 @@ export default function Home() {
             <ComplimentsSection />
             <VinylPlayer />
             <CakeSection />
+            <StatsFinale />
             <Footer />
           </motion.main>
         )}

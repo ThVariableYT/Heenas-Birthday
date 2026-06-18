@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { compliments } from "@/lib/birthday-data";
 import { sparkle } from "./SparkleCanvas";
 import { playChime } from "@/lib/audio";
+import { useStatsStore } from "@/lib/stats-store";
 
 type Chip = {
   id: number;
@@ -32,7 +33,9 @@ export default function ComplimentsSection() {
   const [chips, setChips] = useState<Chip[]>(() => buildChips());
   const [plucked, setPlucked] = useState<string[]>([]);
   const [lastPlucked, setLastPlucked] = useState<string | null>(null);
+  const [shared, setShared] = useState(false);
   const idRef = useMemo(() => ({ v: 1000 }), []);
+  const incStat = useStatsStore((s) => s.inc);
 
   const pluck = (chip: Chip, e: React.MouseEvent) => {
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
@@ -47,6 +50,8 @@ export default function ComplimentsSection() {
     setPlucked((prev) => [chip.text, ...prev].slice(0, 6));
     setLastPlucked(chip.text);
     setTimeout(() => setLastPlucked(null), 2500);
+    incStat("complimentsPlucked", 1);
+    incStat("sparklesFired", 1);
   };
 
   const refill = () => {
@@ -58,6 +63,28 @@ export default function ComplimentsSection() {
       count: 20,
       kind: "gold",
     });
+  };
+
+  const shareBouquet = async () => {
+    if (plucked.length === 0) return;
+    const text =
+      `A bouquet for Heena ✦\n\n` +
+      plucked.map((t, i) => `${i + 1}. ${t}`).join("\n") +
+      `\n\n— picked with love`;
+    try {
+      await navigator.clipboard.writeText(text);
+      setShared(true);
+      setTimeout(() => setShared(false), 2000);
+    } catch {
+      // no-op
+    }
+    sparkle({
+      x: window.innerWidth / 2,
+      y: window.innerHeight / 2,
+      count: 24,
+      kind: "rainbow",
+    });
+    playChime(783.99, "sine", 0.8, 0.12);
   };
 
   return (
@@ -170,11 +197,23 @@ export default function ComplimentsSection() {
             exit={{ opacity: 0, y: 20 }}
           >
             <div className="glass-card rounded-3xl p-5">
-              <div className="mb-3 flex items-center gap-2">
-                <span className="text-amber-500">✦</span>
-                <span className="font-mono-elegant text-[0.6rem] uppercase tracking-[0.3em] text-amber-700/70">
-                  plucked · {plucked.length}
-                </span>
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-amber-500">✦</span>
+                  <span className="font-mono-elegant text-[0.6rem] uppercase tracking-[0.3em] text-amber-700/70">
+                    plucked · {plucked.length}
+                  </span>
+                </div>
+                <motion.button
+                  onClick={shareBouquet}
+                  className="flex items-center gap-1.5 rounded-full border border-amber-300/60 bg-white/70 px-3 py-1 font-mono-elegant text-[0.55rem] uppercase tracking-[0.2em] text-amber-700 transition-colors hover:bg-amber-50 focus-ring-visible"
+                  whileHover={{ scale: 1.04 }}
+                  whileTap={{ scale: 0.96 }}
+                  aria-label="Copy your bouquet of compliments to clipboard"
+                >
+                  <span>✦</span>
+                  <span>share bouquet</span>
+                </motion.button>
               </div>
               <div className="flex flex-wrap gap-2">
                 <AnimatePresence initial={false}>
@@ -210,6 +249,22 @@ export default function ComplimentsSection() {
                 &ldquo;{lastPlucked}&rdquo;
               </span>
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {shared && (
+          <motion.div
+            className="glass-premium fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full px-5 py-2.5 text-xs font-bold text-stone-700 shadow-2xl"
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 30 }}
+          >
+            <span className="flex items-center gap-2">
+              <span className="text-amber-500">✦</span>
+              Bouquet copied — paste it somewhere she&rsquo;ll see
+            </span>
           </motion.div>
         )}
       </AnimatePresence>
