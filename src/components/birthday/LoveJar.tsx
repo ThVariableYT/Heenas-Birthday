@@ -227,10 +227,32 @@ export default function LoveJar() {
   const idRef = useRef(0);
   const phaseRef = useRef(0);
   const impactRef = useRef(0);
+  const fontsReadyRef = useRef(false);
   const [pathD, setPathD] = useState("");
   const jarRef = useRef<HTMLDivElement>(null);
   const incStat = useStatsStore((s) => s.inc);
   const setStat = useStatsStore((s) => s.set);
+
+  /** Ensure Google Fonts are loaded so canvas keepsake uses premium typography. */
+  const ensureFonts = useCallback(async () => {
+    if (fontsReadyRef.current) return;
+    try {
+      const doc = document as Document & { fonts?: FontFaceSet };
+      if (doc.fonts) {
+        await Promise.all([
+          doc.fonts.load("700 76px 'Playfair Display'", "For Heena"),
+          doc.fonts.load("italic 22px 'Playfair Display'", "Gathered slowly, kept tenderly."),
+          doc.fonts.load("italic 26px 'Playfair Display'", "things i've been meaning to say"),
+          doc.fonts.load("600 22px 'Plus Jakarta Sans'", "KEPT WITH LOVE"),
+          doc.fonts.load("500 14px 'Plus Jakarta Sans'", "gathered on"),
+        ]);
+        await doc.fonts.ready;
+      }
+      fontsReadyRef.current = true;
+    } catch {
+      // no-op
+    }
+  }, []);
 
   useEffect(() => {
     let raf = 0;
@@ -350,6 +372,7 @@ export default function LoveJar() {
     if (kept.length === 0) return;
     setExportBusy(true);
     try {
+      await ensureFonts();
       // Yield to next frame so the spinner can paint before heavy canvas work
       await new Promise((r) => requestAnimationFrame(r));
       const favorites = new Set(kept.filter((k) => k.favorite).map((k) => k.id));
@@ -373,7 +396,7 @@ export default function LoveJar() {
     } finally {
       setExportBusy(false);
     }
-  }, [kept]);
+  }, [kept, ensureFonts]);
 
   return (
     <section className="relative px-4 py-32">

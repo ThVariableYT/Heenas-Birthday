@@ -1,0 +1,700 @@
+     1→"use client";
+     2→
+     3→import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
+     4→import { useRef, useState, useCallback, useEffect } from "react";
+     5→import { memoryCards, type MemoryCard } from "@/lib/birthday-data";
+     6→import { sparkle } from "./SparkleCanvas";
+     7→import { playChime } from "@/lib/audio";
+     8→import { useStatsStore } from "@/lib/stats-store";
+     9→import SectionHeader from "./SectionHeader";
+    10→
+    11→const FAV_KEY = "heena:memory-favorites";
+    12→const REVEALED_KEY = "heena:memory-revealed";
+    13→
+    14→function MemoryCardItem({
+    15→  card,
+    16→  index,
+    17→  flipped,
+    18→  favorite,
+    19→  onFlip,
+    20→  onToggleFavorite,
+    21→  onOpenReading,
+    22→  order,
+    23→}: {
+    24→  card: MemoryCard;
+    25→  index: number;
+    26→  flipped: boolean;
+    27→  favorite: boolean;
+    28→  onFlip: (next: boolean, rect: DOMRect) => void;
+    29→  onToggleFavorite: (rect: DOMRect) => void;
+    30→  onOpenReading: (cardId: number) => void;
+    31→  order: number;
+    32→}) {
+    33→  const [tilt, setTilt] = useState({ rx: 0, ry: 0 });
+    34→  const cardRef = useRef<HTMLDivElement>(null);
+    35→  const accentClass = `accent-${card.glyphAccent}`;
+    36→
+    37→  const side = order % 2 === 0 ? -1 : 1;
+    38→  const offset = order * 0.08;
+    39→
+    40→  const handleMove = (e: React.PointerEvent) => {
+    41→    if (!cardRef.current || flipped) return;
+    42→    const rect = cardRef.current.getBoundingClientRect();
+    43→    const x = (e.clientX - rect.left) / rect.width - 0.5;
+    44→    const y = (e.clientY - rect.top) / rect.height - 0.5;
+    45→    setTilt({ rx: -y * 18, ry: x * 22 });
+    46→  };
+    47→
+    48→  const handleLeave = () => setTilt({ rx: 0, ry: 0 });
+    49→
+    50→  const handleClick = (e: React.MouseEvent) => {
+    51→    const rect = e.currentTarget.getBoundingClientRect();
+    52→    onFlip(!flipped, rect);
+    53→  };
+    54→
+    55→  return (
+    56→    <motion.div
+    57→      className="relative flex w-full justify-center"
+    58→      initial={{ opacity: 0, y: 60 }}
+    59→      whileInView={{ opacity: 1, y: 0 }}
+    60→      viewport={{ once: true, margin: "-80px" }}
+    61→      transition={{ duration: 0.7, delay: offset, ease: [0.16, 1, 0.3, 1] }}
+    62→      layout
+    63→    >
+    64→      <motion.div
+    65→        className="pointer-events-none absolute -inset-4 rounded-[2rem]"
+    66→        style={{
+    67→          background:
+    68→            "radial-gradient(circle at 50% 50%, rgba(251,191,36,0.12), transparent 70%)",
+    69→        }}
+    70→        animate={{ opacity: flipped ? 0.9 : 0.4 }}
+    71→      />
+    72→
+    73→      <div
+    74→        className={`group relative h-[380px] w-[280px] cursor-pointer perspective focus-ring-visible ${accentClass}`}
+    75→        ref={cardRef}
+    76→        onPointerMove={handleMove}
+    77→        onPointerLeave={handleLeave}
+    78→        onClick={handleClick}
+    79→        onKeyDown={(e) => {
+    80→          if (e.key === "Enter" || e.key === " ") {
+    81→            e.preventDefault();
+    82→            const rect = e.currentTarget.getBoundingClientRect();
+    83→            onFlip(!flipped, rect);
+    84→          } else if (e.key === "Escape" && flipped) {
+    85→            e.preventDefault();
+    86→            const rect = e.currentTarget.getBoundingClientRect();
+    87→            onFlip(false, rect);
+    88→          }
+    89→        }}
+    90→        tabIndex={0}
+    91→        role="button"
+    92→        aria-label={`Memory card: ${card.front.title}. ${flipped ? "Revealed. Press Enter to close." : "Press Enter to reveal."}`}
+    93→        style={{ marginLeft: side > 0 ? "auto" : undefined, marginRight: side < 0 ? "auto" : undefined }}
+    94→      >
+    95→        <div className="glow-aura" />
+    96→        <motion.div
+    97→          className="preserve-3d relative h-full w-full transition-transform duration-500"
+    98→          style={{
+    99→            transformStyle: "preserve-3d",
+   100→            transform: `rotateX(${tilt.rx}deg) rotateY(${flipped ? 180 : 0 + tilt.ry}deg)`,
+   101→          }}
+   102→          transition={{ type: "spring", stiffness: 200, damping: 20 }}
+   103→        >
+   104→          <div
+   105→            className={`backface-hidden absolute inset-0 overflow-hidden rounded-[2rem] border border-white/70 bg-gradient-to-br ${card.accent} p-7 shadow-[0_20px_50px_-12px_rgba(244,63,94,0.15)]`}
+   106→          >
+   107→            <div className="flex h-full flex-col justify-between">
+   108→              <div className="flex items-start justify-between">
+   109→                <span
+   110→                  className="chapter-foil-underline font-mono-elegant text-[0.6rem] uppercase tracking-[0.3em] text-stone-500"
+   111→                  style={{ color: "var(--card-accent)" }}
+   112→                >
+   113→                  {card.front.label}
+   114→                </span>
+   115→                <div className="flex items-center gap-2">
+   116→                  <span
+   117→                    className="text-2xl"
+   118→                    style={{ color: "var(--card-accent)" }}
+   119→                  >
+   120→                    {card.front.glyph}
+   121→                  </span>
+   122→                  <button
+   123→                    onClick={(e) => {
+   124→                      e.stopPropagation();
+   125→                      const rect = e.currentTarget.getBoundingClientRect();
+   126→                      onToggleFavorite(rect);
+   127→                    }}
+   128→                    className="flex h-7 w-7 items-center justify-center rounded-full border border-rose-300/50 bg-white/70 text-rose-500 backdrop-blur transition-all hover:scale-110 hover:bg-rose-50 focus-ring-visible"
+   129→                    aria-label={favorite ? "Remove from favorites" : "Add to favorites"}
+   130→                    aria-pressed={favorite}
+   131→                  >
+   132→                    <motion.svg
+   133→                      width="13"
+   134→                      height="13"
+   135→                      viewBox="0 0 24 24"
+   136→                      fill={favorite ? "currentColor" : "none"}
+   137→                      stroke="currentColor"
+   138→                      strokeWidth="2"
+   139→                      strokeLinecap="round"
+   140→                      strokeLinejoin="round"
+   141→                      animate={favorite ? { scale: [1, 1.3, 1] } : {}}
+   142→                      transition={{ duration: 0.3 }}
+   143→                    >
+   144→                      <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
+   145→                    </motion.svg>
+   146→                  </button>
+   147→                </div>
+   148→              </div>
+   149→
+   150→              <div>
+   151→                <div
+   152→                  className="mb-3 h-px w-12"
+   153→                  style={{ background: "var(--card-accent-soft)" }}
+   154→                />
+   155→                <h3 className="font-serif-elegant text-3xl font-bold leading-tight text-stone-800">
+   156→                  {card.front.title}
+   157→                </h3>
+   158→              </div>
+   159→
+   160→              <div className="flex items-center justify-between">
+   161→                <span className="font-serif-elegant text-xs italic text-stone-500">
+   162→                  {flipped ? "tap to close" : "tap to reveal"}
+   163→                </span>
+   164→                <motion.div
+   165→                  className="flex h-8 w-8 items-center justify-center rounded-full border"
+   166→                  style={{ borderColor: "var(--card-accent-soft)" }}
+   167→                  animate={{ rotate: [0, 360] }}
+   168→                  transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+   169→                >
+   170→                  <span style={{ color: "var(--card-accent)" }}>↻</span>
+   171→                </motion.div>
+   172→              </div>
+   173→            </div>
+   174→
+   175→            <div className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-white/30 blur-2xl" />
+   176→          </div>
+   177→
+   178→          <div
+   179→            className="memory-sheen backface-hidden absolute inset-0 overflow-hidden rounded-[2rem] border border-amber-200/60 bg-gradient-to-br from-stone-900 via-stone-800 to-rose-950 p-7 text-amber-50 shadow-[0_20px_60px_-12px_rgba(0,0,0,0.4)]"
+   180→            style={{ transform: "rotateY(180deg)" }}
+   181→          >
+   182→            {/* Accent-tinted glow tied to the per-card accent color */}
+   183→            <div className="memory-back-accent-glow" aria-hidden />
+   184→
+   185→            {/* Decorative quote marks flanking the body */}
+   186→            <span className="memory-back-quote-mark pointer-events-none absolute left-4 top-4" aria-hidden>&ldquo;</span>
+   187→            <span className="memory-back-quote-mark trailing pointer-events-none absolute bottom-12 right-4" aria-hidden>&ldquo;</span>
+   188→
+   189→            <div className="relative z-10 flex h-full flex-col justify-between">
+   190→              <div>
+   191→                <span
+   192→                  className="font-mono-elegant text-[0.6rem] uppercase tracking-[0.3em]"
+   193→                  style={{ color: "var(--card-accent)" }}
+   194→                >
+   195→                  {card.back.title}
+   196→                </span>
+   197→                <div
+   198→                  className="my-3 h-px w-12"
+   199→                  style={{ background: "var(--card-accent-soft)" }}
+   200→                />
+   201→              </div>
+   202→
+   203→              <p className="drop-cap-quote font-serif-elegant text-base italic leading-relaxed text-amber-100/90">
+   204→                {card.back.body}
+   205→              </p>
+   206→
+   207→              <div className="flex items-center justify-between">
+   208→                <span className="font-serif-elegant text-xs text-rose-300/70">
+   209→                  {card.back.signature}
+   210→                </span>
+   211→                <div className="flex items-center gap-2">
+   212→                  <button
+   213→                    onClick={(e) => {
+   214→                      e.stopPropagation();
+   215→                      onOpenReading(card.id);
+   216→                    }}
+   217→                    className="flex h-6 w-6 items-center justify-center rounded-full border border-amber-400/40 bg-amber-500/10 text-amber-300 transition-all hover:scale-110 hover:bg-amber-500/20 focus-ring-visible"
+   218→                    aria-label={`Open ${card.front.title} in reading mode`}
+   219→                    title="Reading mode"
+   220→                  >
+   221→                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+   222→                      <path d="M15 3h6v6M14 10l7-7M9 21H3v-6M10 14l-7 7" />
+   223→                    </svg>
+   224→                  </button>
+   225→                  <span style={{ color: "var(--card-accent)" }} className="opacity-70">✦</span>
+   226→                </div>
+   227→              </div>
+   228→            </div>
+   229→
+   230→            <div className="pointer-events-none absolute -bottom-10 -left-10 h-40 w-40 rounded-full bg-amber-500/10 blur-3xl" />
+   231→          </div>
+   232→        </motion.div>
+   233→      </div>
+   234→    </motion.div>
+   235→  );
+   236→}
+   237→
+   238→export default function MemoryDeck() {
+   239→  const sectionRef = useRef<HTMLDivElement>(null);
+   240→  const { scrollYProgress } = useScroll({
+   241→    target: sectionRef,
+   242→    offset: ["start end", "end start"],
+   243→  });
+   244→  const headingY = useTransform(scrollYProgress, [0, 1], [60, -60]);
+   245→
+   246→  const [flippedSet, setFlippedSet] = useState<Set<number>>(new Set());
+   247→  const [favoritesSet, setFavoritesSet] = useState<Set<number>>(new Set());
+   248→  const [order, setOrder] = useState<number[]>(memoryCards.map((_, i) => i));
+   249→  const incStat = useStatsStore((s) => s.inc);
+   250→  const setStat = useStatsStore((s) => s.set);
+   251→
+   252→  // Hydrate favorites + revealed from localStorage
+   253→  useEffect(() => {
+   254→    try {
+   255→      const favRaw = localStorage.getItem(FAV_KEY);
+   256→      if (favRaw) {
+   257→        const arr = JSON.parse(favRaw) as number[];
+   258→        // eslint-disable-next-line react-hooks/set-state-in-effect
+   259→        setFavoritesSet(new Set(arr));
+   260→      }
+   261→      // Don't auto-restore revealed set — let the user re-flip; but mark them in stats
+   262→      const revRaw = localStorage.getItem(REVEALED_KEY);
+   263→      if (revRaw) {
+   264→        const arr = JSON.parse(revRaw) as number[];
+   265→        setStat("memoriesRevealed", arr.length);
+   266→      }
+   267→    } catch {
+   268→      // no-op
+   269→    }
+   270→  }, [setStat]);
+   271→
+   272→  // Persist favorites whenever they change
+   273→  useEffect(() => {
+   274→    try {
+   275→      localStorage.setItem(FAV_KEY, JSON.stringify(Array.from(favoritesSet)));
+   276→    } catch {
+   277→      // no-op
+   278→    }
+   279→    setStat("favoritesPinned", favoritesSet.size);
+   280→  }, [favoritesSet, setStat]);
+   281→
+   282→  // Persist revealed + sync stats
+   283→  useEffect(() => {
+   284→    try {
+   285→      localStorage.setItem(REVEALED_KEY, JSON.stringify(Array.from(flippedSet)));
+   286→    } catch {
+   287→      // no-op
+   288→    }
+   289→    setStat("memoriesRevealed", flippedSet.size);
+   290→  }, [flippedSet, setStat]);
+   291→
+   292→  const handleFlip = useCallback(
+   293→    (cardId: number, next: boolean, rect: DOMRect, index: number) => {
+   294→      const wasRevealed = flippedSet.has(cardId);
+   295→      setFlippedSet((prev) => {
+   296→        const nextSet = new Set(prev);
+   297→        if (next) nextSet.add(cardId);
+   298→        else nextSet.delete(cardId);
+   299→        return nextSet;
+   300→      });
+   301→      if (next && !wasRevealed) {
+   302→        sparkle({
+   303→          x: rect.left + rect.width / 2,
+   304→          y: rect.top + rect.height / 2,
+   305→          count: 18,
+   306→          kind: "rainbow",
+   307→        });
+   308→        playChime(440 + index * 40, "sine", 0.8, 0.1);
+   309→        incStat("sparklesFired", 1);
+   310→      } else if (!next) {
+   311→        playChime(330, "sine", 0.6, 0.08);
+   312→      }
+   313→    },
+   314→    [flippedSet, incStat],
+   315→  );
+   316→
+   317→  const toggleFavorite = useCallback(
+   318→    (cardId: number, rect: DOMRect) => {
+   319→      const willFavorite = !favoritesSet.has(cardId);
+   320→      setFavoritesSet((prev) => {
+   321→        const next = new Set(prev);
+   322→        if (next.has(cardId)) next.delete(cardId);
+   323→        else next.add(cardId);
+   324→        return next;
+   325→      });
+   326→      if (willFavorite) {
+   327→        sparkle({
+   328→          x: rect.left + rect.width / 2,
+   329→          y: rect.top + rect.height / 2,
+   330→          count: 14,
+   331→          kind: "rose",
+   332→        });
+   333→        playChime(659.25, "sine", 0.6, 0.1);
+   334→        incStat("sparklesFired", 1);
+   335→      } else {
+   336→        playChime(392, "sine", 0.4, 0.08);
+   337→      }
+   338→    },
+   339→    [favoritesSet, incStat],
+   340→  );
+   341→
+   342→  const sortedOrder = [...order].sort((a, b) => {
+   343→    const aFav = favoritesSet.has(memoryCards[a].id) ? 0 : 1;
+   344→    const bFav = favoritesSet.has(memoryCards[b].id) ? 0 : 1;
+   345→    return aFav - bFav;
+   346→  });
+   347→
+   348→  const revealedCount = flippedSet.size;
+   349→  const total = memoryCards.length;
+   350→  const allRevealed = revealedCount === total;
+   351→  const favoritesCount = favoritesSet.size;
+   352→
+   353→  // Reading-mode overlay state — focused full-screen memory card viewer
+   354→  const [readingIndex, setReadingIndex] = useState<number | null>(null);
+   355→
+   356→  // Touch swipe state for reading mode navigation
+   357→  const touchStartRef = useRef<{ x: number; y: number; t: number } | null>(null);
+   358→
+   359→  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+   360→    const t = e.touches[0];
+   361→    touchStartRef.current = { x: t.clientX, y: t.clientY, t: Date.now() };
+   362→  }, []);
+   363→
+   364→  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+   365→    const start = touchStartRef.current;
+   366→    if (!start) return;
+   367→    touchStartRef.current = null;
+   368→    const end = e.changedTouches[0];
+   369→    const dx = end.clientX - start.x;
+   370→    const dy = end.clientY - start.y;
+   371→    const dt = Date.now() - start.t;
+   372→    // Only treat as swipe if horizontal-dominant, fast enough, and traveled >50px
+   373→    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.4 || dt > 800) return;
+   374→    if (dx < 0) {
+   375→      // swipe left → next
+   376→      setReadingIndex((i) => (i === null ? i : (i + 1) % memoryCards.length));
+   377→      playChime(440 + Math.random() * 60, "sine", 0.4, 0.08);
+   378→    } else {
+   379→      // swipe right → prev
+   380→      setReadingIndex((i) => (i === null ? i : (i - 1 + memoryCards.length) % memoryCards.length));
+   381→      playChime(330 + Math.random() * 60, "sine", 0.4, 0.08);
+   382→    }
+   383→  }, [setReadingIndex]);
+   384→
+   385→  // Reading mode keyboard navigation — ArrowLeft / ArrowRight / Escape
+   386→  useEffect(() => {
+   387→    if (readingIndex === null) return;
+   388→    const onKey = (e: KeyboardEvent) => {
+   389→      if (e.key === "ArrowRight") {
+   390→        e.preventDefault();
+   391→        setReadingIndex((i) => (i === null ? i : (i + 1) % memoryCards.length));
+   392→        playChime(440 + Math.random() * 60, "sine", 0.4, 0.08);
+   393→      } else if (e.key === "ArrowLeft") {
+   394→        e.preventDefault();
+   395→        setReadingIndex((i) => (i === null ? i : (i - 1 + memoryCards.length) % memoryCards.length));
+   396→        playChime(330 + Math.random() * 60, "sine", 0.4, 0.08);
+   397→      } else if (e.key === "Escape") {
+   398→        e.preventDefault();
+   399→        setReadingIndex(null);
+   400→        playChime(294, "sine", 0.4, 0.08);
+   401→      }
+   402→    };
+   403→    window.addEventListener("keydown", onKey);
+   404→    // Lock body scroll while overlay is open
+   405→    const prev = document.body.style.overflow;
+   406→    document.body.style.overflow = "hidden";
+   407→    return () => {
+   408→      window.removeEventListener("keydown", onKey);
+   409→      document.body.style.overflow = prev;
+   410→    };
+   411→  }, [readingIndex]);
+   412→
+   413→  const openReading = (cardId: number) => {
+   414→    setReadingIndex(cardId - 1); // memoryCards ids are 1-based
+   415→    sparkle({ x: window.innerWidth / 2, y: window.innerHeight / 2, count: 18, kind: "gold" });
+   416→    playChime(659.25, "sine", 0.6, 0.1);
+   417→  };
+   418→
+   419→  const closeReading = () => {
+   420→    setReadingIndex(null);
+   421→    playChime(392, "sine", 0.4, 0.08);
+   422→  };
+   423→
+   424→  const revealAll = () => {
+   425→    const all = new Set(memoryCards.map((c) => c.id));
+   426→    setFlippedSet(all);
+   427→    memoryCards.forEach((c, i) => {
+   428→      setTimeout(() => playChime(440 + i * 40, "sine", 0.8, 0.1), i * 80);
+   429→    });
+   430→    sparkle({ x: window.innerWidth / 2, y: window.innerHeight / 2, count: 50, kind: "rainbow" });
+   431→  };
+   432→
+   433→  const closeAll = () => {
+   434→    setFlippedSet(new Set());
+   435→    playChime(220, "sine", 0.8, 0.08);
+   436→  };
+   437→
+   438→  const shuffle = () => {
+   439→    const arr = [...order];
+   440→    for (let i = arr.length - 1; i > 0; i--) {
+   441→      const j = Math.floor(Math.random() * (i + 1));
+   442→      [arr[i], arr[j]] = [arr[j], arr[i]];
+   443→    }
+   444→    setOrder(arr);
+   445→    setFlippedSet(new Set());
+   446→    playChime(587.33, "triangle", 0.6, 0.1);
+   447→    sparkle({ x: window.innerWidth / 2, y: window.innerHeight / 2, count: 20, kind: "gold" });
+   448→  };
+   449→
+   450→  return (
+   451→    <section ref={sectionRef} className="relative px-4 py-32">
+   452→      <motion.div style={{ y: headingY }}>
+   453→        <SectionHeader
+   454→          number="02"
+   455→          eyebrow="the memory deck"
+   456→          accent="rose"
+   457→          title={
+   458→            <>
+   459→              Six chapters,
+   460→              <br />
+   461→              <span className="bg-gradient-to-r from-rose-500 to-amber-600 bg-clip-text text-transparent">
+   462→                kept like cards
+   463→              </span>
+   464→            </>
+   465→          }
+   466→          subtitle="Each card holds a moment. Tilt it, turn it over — let it tell you the part of the story it kept."
+   467→        />
+   468→      </motion.div>
+   469→
+   470→      <div className="mx-auto mb-16 flex max-w-2xl flex-col items-center gap-4">
+   471→        <div className="flex w-full items-center gap-4">
+   472→          <span className="font-mono-elegant text-xs uppercase tracking-[0.2em] text-stone-500">
+   473→            {revealedCount} / {total} revealed
+   474→          </span>
+   475→          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-stone-200">
+   476→            <motion.div
+   477→              className="h-full rounded-full bg-gradient-to-r from-amber-400 via-rose-400 to-violet-400"
+   478→              animate={{ width: `${(revealedCount / total) * 100}%` }}
+   479→              transition={{ type: "spring", stiffness: 120, damping: 20 }}
+   480→            />
+   481→          </div>
+   482→        </div>
+   483→
+   484→        <div className="flex flex-wrap items-center justify-center gap-2">
+   485→          <motion.button
+   486→            onClick={allRevealed ? closeAll : revealAll}
+   487→            className="group flex items-center gap-2 rounded-full border border-amber-300/60 bg-white/70 px-5 py-2 text-xs font-semibold text-amber-700 backdrop-blur transition-colors hover:bg-amber-50"
+   488→            whileHover={{ scale: 1.04 }}
+   489→            whileTap={{ scale: 0.96 }}
+   490→          >
+   491→            <AnimatePresence mode="wait">
+   492→              <motion.span
+   493→                key={allRevealed ? "close" : "reveal"}
+   494→                initial={{ opacity: 0, y: 6 }}
+   495→                animate={{ opacity: 1, y: 0 }}
+   496→                exit={{ opacity: 0, y: -6 }}
+   497→                className="flex items-center gap-2"
+   498→              >
+   499→                {allRevealed ? (
+   500→                  <>
+   501→                    <span>↻</span>
+   502→                    <span>Close all</span>
+   503→                  </>
+   504→                ) : (
+   505→                  <>
+   506→                    <span>✦</span>
+   507→                    <span>Reveal all</span>
+   508→                  </>
+   509→                )}
+   510→              </motion.span>
+   511→            </AnimatePresence>
+   512→          </motion.button>
+   513→
+   514→          <motion.button
+   515→            onClick={shuffle}
+   516→            className="group flex items-center gap-2 rounded-full border border-rose-300/60 bg-white/70 px-5 py-2 text-xs font-semibold text-rose-700 backdrop-blur transition-colors hover:bg-rose-50"
+   517→            whileHover={{ scale: 1.04 }}
+   518→            whileTap={{ scale: 0.96 }}
+   519→          >
+   520→            <motion.span
+   521→              animate={{ rotate: [0, 0, 180, 360] }}
+   522→              transition={{ duration: 0.6, times: [0, 0.4, 0.7, 1] }}
+   523→            >
+   524→              ⇆
+   525→            </motion.span>
+   526→            <span>Shuffle</span>
+   527→          </motion.button>
+   528→        </div>
+   529→      </div>
+   530→
+   531→      <div className="mx-auto flex max-w-5xl flex-col gap-12">
+   532→        {sortedOrder.map((cardIndex, displayIndex) => {
+   533→          const card = memoryCards[cardIndex];
+   534→          return (
+   535→            <MemoryCardItem
+   536→              key={card.id}
+   537→              card={card}
+   538→              index={cardIndex}
+   539→              order={displayIndex}
+   540→              flipped={flippedSet.has(card.id)}
+   541→              favorite={favoritesSet.has(card.id)}
+   542→              onFlip={(next, rect) => handleFlip(card.id, next, rect, cardIndex)}
+   543→              onToggleFavorite={(rect) => toggleFavorite(card.id, rect)}
+   544→              onOpenReading={openReading}
+   545→            />
+   546→          );
+   547→        })}
+   548→      </div>
+   549→
+   550→      {favoritesCount > 0 && (
+   551→        <div className="mx-auto mt-10 flex max-w-md items-center justify-center gap-2 text-center">
+   552→          <span className="text-rose-500">♥</span>
+   553→          <span className="font-mono-elegant text-[0.6rem] uppercase tracking-[0.3em] text-stone-500">
+   554→            {favoritesCount} {favoritesCount === 1 ? "favorite" : "favorites"} pinned to the top
+   555→          </span>
+   556→        </div>
+   557→      )}
+   558→
+   559→      {/* Reading mode overlay — focused full-screen memory viewer */}
+   560→      <AnimatePresence>
+   561→        {readingIndex !== null && memoryCards[readingIndex] && (
+   562→          <motion.div
+   563→            className="fixed inset-0 z-[80] flex items-center justify-center px-4 py-8"
+   564→            initial={{ opacity: 0 }}
+   565→            animate={{ opacity: 1 }}
+   566→            exit={{ opacity: 0 }}
+   567→            transition={{ duration: 0.3 }}
+   568→            role="dialog"
+   569→            aria-modal="true"
+   570→            aria-label="Memory reading mode"
+   571→            onClick={closeReading}
+   572→          >
+   573→            {/* Backdrop — deep starry night */}
+   574→            <div className="absolute inset-0 bg-gradient-to-br from-stone-950 via-rose-950/80 to-stone-900 backdrop-blur-md" />
+   575→            <div className="reading-stars absolute inset-0 overflow-hidden" aria-hidden>
+   576→              {Array.from({ length: 36 }).map((_, i) => (
+   577→                <span
+   578→                  key={i}
+   579→                  className="reading-star"
+   580→                  style={{
+   581→                    top: `${(i * 67) % 100}%`,
+   582→                    left: `${(i * 91) % 100}%`,
+   583→                    animationDelay: `${(i % 8) * 0.35}s`,
+   584→                    animationDuration: `${2 + (i % 5) * 0.5}s`,
+   585→                  }}
+   586→                />
+   587→              ))}
+   588→            </div>
+   589→
+   590→            {/* Card content — large typography, full focus */}
+   591→            <motion.div
+   592→              key={readingIndex}
+   593→              className={`glass-premium reading-page-turn relative z-10 w-full max-w-2xl rounded-[2rem] border border-amber-200/30 bg-gradient-to-br from-stone-900/95 via-stone-800/95 to-rose-950/95 p-10 text-amber-50 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.7)] sm:p-14 accent-${memoryCards[readingIndex].glyphAccent}`}
+   594→              initial={{ scale: 0.92, y: 24, opacity: 0 }}
+   595→              animate={{ scale: 1, y: 0, opacity: 1 }}
+   596→              exit={{ scale: 0.95, y: 12, opacity: 0 }}
+   597→              transition={{ type: "spring", stiffness: 240, damping: 26 }}
+   598→              onClick={(e) => e.stopPropagation()}
+   599→              onTouchStart={handleTouchStart}
+   600→              onTouchEnd={handleTouchEnd}
+   601→            >
+   602→              {/* Corner flourishes */}
+   603→              <span className="corner-flourish corner-flourish-tl" aria-hidden />
+   604→              <span className="corner-flourish corner-flourish-tr" aria-hidden />
+   605→              <span className="corner-flourish corner-flourish-bl" aria-hidden />
+   606→              <span className="corner-flourish corner-flourish-br" aria-hidden />
+   607→
+   608→              {/* Top label + counter */}
+   609→              <div className="mb-6 flex items-center justify-between">
+   610→                <div className="flex items-center gap-3">
+   611→                  <span className="text-2xl" style={{ color: "var(--card-accent)" }}>{memoryCards[readingIndex].front.glyph}</span>
+   612→                  <span
+   613→                    className="font-mono-elegant text-[0.6rem] uppercase tracking-[0.4em]"
+   614→                    style={{ color: "var(--card-accent)" }}
+   615→                  >
+   616→                    {memoryCards[readingIndex].front.label}
+   617→                  </span>
+   618→                </div>
+   619→                <span className="font-mono-elegant text-[0.6rem] uppercase tracking-[0.3em] text-amber-400/60">
+   620→                  {readingIndex + 1} / {memoryCards.length}
+   621→                </span>
+   622→              </div>
+   623→
+   624→              <div
+   625→                className="mb-4 h-px w-16"
+   626→                style={{ background: "var(--card-accent-soft)" }}
+   627→              />
+   628→
+   629→              {/* Title */}
+   630→              <h3 className="font-serif-elegant text-4xl font-bold leading-tight text-amber-50 sm:text-5xl">
+   631→                {memoryCards[readingIndex].front.title}
+   632→              </h3>
+   633→
+   634→              <p className="mt-2 font-serif-elegant text-sm italic text-rose-300/70">
+   635→                {memoryCards[readingIndex].back.title}
+   636→              </p>
+   637→
+   638→              {/* Body — large reading typography with drop-cap */}
+   639→              <p className="drop-cap-quote mt-8 font-serif-elegant text-lg italic leading-relaxed text-amber-100/95 sm:text-xl">
+   640→                {memoryCards[readingIndex].back.body}
+   641→              </p>
+   642→
+   643→              <p className="mt-6 text-right font-serif-elegant text-sm text-rose-300/70">
+   644→                {memoryCards[readingIndex].back.signature}
+   645→              </p>
+   646→
+   647→              {/* Nav controls */}
+   648→              <div className="mt-10 flex items-center justify-between gap-3">
+   649→                <button
+   650→                  onClick={() => setReadingIndex((i) => (i === null ? i : (i - 1 + memoryCards.length) % memoryCards.length))}
+   651→                  className="group flex items-center gap-2 rounded-full border border-amber-400/30 bg-amber-500/10 px-4 py-2 font-mono-elegant text-[0.6rem] uppercase tracking-[0.2em] text-amber-200 transition-colors hover:bg-amber-500/20"
+   652→                  aria-label="Previous memory"
+   653→                >
+   654→                  <span className="transition-transform group-hover:-translate-x-0.5">←</span>
+   655→                  <span>Prev</span>
+   656→                </button>
+   657→
+   658→                <div className="flex items-center gap-1.5">
+   659→                  {memoryCards.map((_, i) => (
+   660→                    <button
+   661→                      key={i}
+   662→                      onClick={() => setReadingIndex(i)}
+   663→                      className={`h-1.5 rounded-full transition-all ${
+   664→                        i === readingIndex ? "w-6 bg-amber-400" : "w-1.5 bg-amber-400/30 hover:bg-amber-400/60"
+   665→                      }`}
+   666→                      aria-label={`Go to memory ${i + 1}`}
+   667→                    />
+   668→                  ))}
+   669→                </div>
+   670→
+   671→                <button
+   672→                  onClick={() => setReadingIndex((i) => (i === null ? i : (i + 1) % memoryCards.length))}
+   673→                  className="group flex items-center gap-2 rounded-full border border-amber-400/30 bg-amber-500/10 px-4 py-2 font-mono-elegant text-[0.6rem] uppercase tracking-[0.2em] text-amber-200 transition-colors hover:bg-amber-500/20"
+   674→                  aria-label="Next memory"
+   675→                >
+   676→                  <span>Next</span>
+   677→                  <span className="transition-transform group-hover:translate-x-0.5">→</span>
+   678→                </button>
+   679→              </div>
+   680→
+   681→              {/* Close + hint */}
+   682→              <div className="mt-6 flex items-center justify-center gap-4">
+   683→                <button
+   684→                  onClick={closeReading}
+   685→                  className="font-mono-elegant text-[0.55rem] uppercase tracking-[0.3em] text-amber-400/50 transition-colors hover:text-amber-300"
+   686→                >
+   687→                  ✕ close reading
+   688→                </button>
+   689→              </div>
+   690→              <p className="mt-3 text-center font-mono-elegant text-[0.55rem] uppercase tracking-[0.25em] text-amber-400/40">
+   691→                ← → or swipe to navigate · Esc to close
+   692→              </p>
+   693→            </motion.div>
+   694→          </motion.div>
+   695→        )}
+   696→      </AnimatePresence>
+   697→    </section>
+   698→  );
+   699→}
+   700→

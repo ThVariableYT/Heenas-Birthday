@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useStatsStore } from "@/lib/stats-store";
 import { sparkle } from "./SparkleCanvas";
@@ -11,6 +11,10 @@ import { playChime } from "@/lib/audio";
  * keepsake card via HTML5 Canvas. The card is rendered procedurally
  * (gradient background, glassmorphism panels, animated-style typography)
  * so it works fully client-side with no external assets.
+ *
+ * Google Fonts (Playfair Display + Plus Jakarta Sans) are loaded via
+ * `document.fonts.load` before drawing so the keepsake uses the exact
+ * same premium typography as the site.
  */
 
 type StatItem = {
@@ -229,10 +233,32 @@ export default function StatsExportCard() {
   const stats = useStatsStore((s) => s.stats);
   const [showToast, setShowToast] = useState(false);
   const [busy, setBusy] = useState(false);
+  const fontsReadyRef = useRef(false);
+
+  /** Ensure Google Fonts are loaded into the document so canvas can use them. */
+  const ensureFonts = useCallback(async () => {
+    if (fontsReadyRef.current) return;
+    try {
+      const doc = document as Document & { fonts?: FontFaceSet };
+      if (doc.fonts) {
+        await Promise.all([
+          doc.fonts.load("700 76px 'Playfair Display'", "For Heena"),
+          doc.fonts.load("italic 26px 'Playfair Display'", "your birthday, in numbers"),
+          doc.fonts.load("600 22px 'Plus Jakarta Sans'", "A K E E P S A K E"),
+          doc.fonts.load("500 14px 'Plus Jakarta Sans'", "memories revealed"),
+        ]);
+        await doc.fonts.ready;
+      }
+      fontsReadyRef.current = true;
+    } catch {
+      // no-op — fall back to default fonts
+    }
+  }, []);
 
   const handleDownload = useCallback(async () => {
     setBusy(true);
     try {
+      await ensureFonts();
       // Yield to next frame so the spinner can paint before heavy canvas work
       await new Promise((r) => requestAnimationFrame(r));
       const canvas = drawCard(stats as unknown as Record<string, number>);
@@ -255,11 +281,12 @@ export default function StatsExportCard() {
     } finally {
       setBusy(false);
     }
-  }, [stats]);
+  }, [stats, ensureFonts]);
 
   const handleShare = useCallback(async () => {
     setBusy(true);
     try {
+      await ensureFonts();
       await new Promise((r) => requestAnimationFrame(r));
       const canvas = drawCard(stats as unknown as Record<string, number>);
       const blob: Blob = await new Promise((resolve) => {
@@ -299,7 +326,7 @@ export default function StatsExportCard() {
     } finally {
       setBusy(false);
     }
-  }, [stats]);
+  }, [stats, ensureFonts]);
 
   return (
     <>

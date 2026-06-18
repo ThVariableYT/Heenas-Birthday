@@ -16,6 +16,7 @@ type Chip = {
   delay: number;
   hue: number;
   custom?: boolean;
+  justPlanted?: boolean;
 };
 
 const HUES = [12, 35, 280, 160, 200, 340];
@@ -155,7 +156,8 @@ export default function ComplimentsSection() {
       hue: HUES[(compliments.length + nextCustom.length) % HUES.length],
       custom: true,
     };
-    setChips((prev) => [...prev, newChip]);
+    // Mark this chip as "spawning" so it gets the grow-from-input animation
+    setChips((prev) => [...prev, { ...newChip, justPlanted: true } as Chip]);
     setDraft("");
     setAdding(false);
     sparkle({
@@ -243,6 +245,8 @@ export default function ComplimentsSection() {
               key={chip.id}
               onClick={(e) => pluck(chip, e)}
               className={`group absolute cursor-pointer rounded-full border px-4 py-2 text-xs font-semibold shadow-lg backdrop-blur transition-colors hover:bg-white focus-ring-visible ${
+                chip.justPlanted ? "garden-chip-spawn" : ""
+              } ${
                 chip.custom
                   ? "border-violet-400/70 bg-violet-50/80 text-violet-800"
                   : "border-white/70 bg-white/80 text-stone-700"

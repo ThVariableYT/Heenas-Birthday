@@ -8,6 +8,7 @@ import { playChime } from "@/lib/audio";
 import StatsExportCard from "./StatsExportCard";
 import SectionHeader from "./SectionHeader";
 import PoemComposer from "./PoemComposer";
+import LetterComposer from "./LetterComposer";
 
 type StatItem = {
   key: keyof ReturnType<typeof useStatsStore.getState>["stats"];
@@ -153,6 +154,7 @@ export default function StatsFinale() {
   const sectionRef = useRef<HTMLElement>(null);
   const [showReset, setShowReset] = useState(false);
   const [poemOpen, setPoemOpen] = useState(false);
+  const [letterOpen, setLetterOpen] = useState(false);
 
   const handleCelebrate = (e: React.MouseEvent) => {
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
@@ -261,6 +263,24 @@ export default function StatsFinale() {
               </span>
               <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-violet-200/40 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
             </motion.button>
+
+            <motion.button
+              onClick={() => {
+                setLetterOpen(true);
+                playChime(659.25, "sine", 0.6, 0.1);
+                sparkle({ x: window.innerWidth / 2, y: window.innerHeight / 2, count: 18, kind: "gold" });
+              }}
+              className="group relative inline-flex items-center gap-2 overflow-hidden rounded-full border border-rose-300/60 bg-white/80 px-6 py-3 text-sm font-semibold text-rose-700 shadow-lg shadow-rose-500/10 backdrop-blur transition-colors hover:bg-rose-50 dark:bg-stone-800/80 dark:text-rose-200 dark:hover:bg-stone-700/80"
+              whileHover={{ scale: 1.04 }}
+              whileTap={{ scale: 0.97 }}
+              aria-label="Open the birthday letter composer"
+            >
+              <span className="relative z-10 flex items-center gap-2">
+                <span aria-hidden>✉</span>
+                <span>Write her a letter</span>
+              </span>
+              <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-rose-200/40 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
+            </motion.button>
           </div>
 
           <StatsExportCard />
@@ -295,6 +315,7 @@ export default function StatsFinale() {
       </div>
 
       <PoemComposer open={poemOpen} onClose={() => setPoemOpen(false)} />
+      <LetterComposer open={letterOpen} onClose={() => setLetterOpen(false)} />
     </section>
   );
 }

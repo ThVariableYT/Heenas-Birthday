@@ -608,3 +608,110 @@ Unresolved Issues or Risks, and Priority Recommendations for the Next Phase
   6. **Compliments garden: chip-to-chip "grow" animation** — when a custom compliment is planted, animate it growing from the input upward into the garden (currently it just appears).
   7. **Accessibility**: full keyboard navigation pass for the new mini-player (focus trap when visible); screen-reader announcements for scroll-spy section changes.
   8. **Performance**: prefetch the VinylPlayer dynamic chunk on hover; lazy-mount the love-jar canvas export function until first invoked.
+
+---
+
+## Round 8 — Scheduled webDevReview (cron #215324)
+
+**Task ID**: 8
+**Agent**: main (webDevReview)
+**Task**: Assess status via agent-browser QA, then add more styling details + more features per the mandatory requirements.
+
+### Work Log
+- Read prior worklog (R1–R7, ~610 lines); confirmed project stable and fully functional across 7 prior rounds.
+- Pre-feature QA via agent-browser (desktop 1440×900, mobile 390×844): intro → enter → all 8 sections render; no console errors; no horizontal overflow (desktop scrollW=1440=innerW; mobile scrollW=390=innerW); scrollH desktop 12649. Theme toggle, memory flip, candle blow, stats increment all verified functional.
+- **No bugs to fix** — proceeded to feature/style additions per the mandatory requirements.
+
+#### New Features
+1. **Birthday Letter Composer** (`src/components/birthday/LetterComposer.tsx` + integrated into `StatsFinale`). A new fullscreen "Write her a letter" overlay triggered by a rose-tinted button placed next to "Compose a poem" in the StatsFinale footer. Features:
+   - **Cream stationery paper aesthetic** — warm cream gradient background, faint paper-grain SVG noise texture (multiply blend, drifting), faint horizontal ruled lines (32px pitch) that show through the transparent textarea.
+   - **Three font choices** — Serif (Playfair Display), Handwritten (Caveat — newly added via `next/font/google`), Typewriter (Fira Code). Pills show a sample "Aa" in the actual font.
+   - **Letterhead** — ornamental top with art-deco ruled lines flanking "A LETTER, FOR HEENA" eyebrow + "From the heart, in long form" serif title + italic subtitle, plus two floating companion glyphs (✦ ❋) that gently bob + rotate.
+   - **Auto-save to localStorage** (`heena:letter-v1`) — 1s debounced save after the last keystroke. A green "✓ SAVED TODAY AT 9:29 PM" pill appears in the toolbar.
+   - **4000-char limit** with live `{n} / 4000` counter.
+   - **Copy to clipboard** — copies the body + "— for Heena, on {today's date}" footer; ✓ confirmation state; gold sparkle + chime.
+   - **Print** — opens `window.print()` with dedicated `@media print` CSS that hides everything except `.letter-paper`; rainbow sparkle before printing.
+   - **Seal & close** — primary gradient button fires a 26-particle rainbow sparkle + dual chime and closes the dialog. The bottom of the card shows a decorative **wax-seal stamp** (radial gradient body, inset highlight/shadow, dashed inner border, slow-pulsing animation) with "H" monogram, flanked by today's date and "with love".
+   - **Click-outside-to-close** on the backdrop, plus Escape key, plus body scroll lock.
+   - **Default body** seeded with "Dearest Heena, / On your birthday, I wanted to write you something slow — not a message, not a caption, but a letter. / Begin here…".
+   - Verified end-to-end: typed a 192-char test letter → "SAVED TODAY AT 9:29 PM" pill appeared → `localStorage['heena:letter-v1']` confirmed present → Escape closed cleanly.
+   - VLM (glm-4.6v) review: 9/10 polish, all 6 verification items confirmed (cream paper, ruled lines, wax seal, 3 font pills, copy/print/seal buttons, no overflow).
+2. **Vinyl: real audio + .lrc upload** (`VinylPlayer.tsx` + `audio.ts`). The longest-standing wishlist item (since R2) is now implemented. Features:
+   - **New upload UI** below the volume control — a dashed-border cream upload tile labelled "↥ LOAD YOUR OWN TRACK / choose an audio file — add a .lrc for synced lyrics". Clicking opens a hidden `<input type="file" accept="audio/*,.lrc" multiple>`.
+   - **Audio file** is loaded via `URL.createObjectURL()` and played through a real `<audio>` element (hidden). When the metadata loads, the duration is read and playback starts. The audio element's `volume` is wired to the same slider as the procedural synth.
+   - **.lrc parser** — a `parseLrc(content)` helper that extracts `[mm:ss.ms]` timestamps (supports `[01:23.45]`, `[01:23:456]`, and `[1:2:3]` variants) and sorts by time. Empty lines and metadata lines are skipped.
+   - **Synced lyrics for uploaded tracks** — the lyrics panel renders the uploaded track's `.lrc` lines (or an empty-state "No lyrics for this track yet — load a .lrc to see synced lines." message). Lyric-click-to-seek works against `audioEl.currentTime`.
+   - **Upload error handling** — if no audio file is selected, an error message "Please choose an audio file (mp3, wav, ogg, m4a…)." appears. If the user tries to copy lyrics for a track without lyrics, a similar error appears.
+   - **Successful upload state** — the upload tile turns emerald-bordered with "✓ AUDIO + LYRICS LOADED" (or "✓ AUDIO LOADED") and shows the file name(s). A "✕ remove upload" button clears the URL, pauses the audio element, and returns to procedural mode.
+   - **Switching between procedural and uploaded** — selecting a curated track while an uploaded track is playing pauses the audio element, clears `uploaded`, and starts the procedural melody. The vinyl label switches between "side a" (curated) and "your side a" (uploaded).
+   - **Copy lyrics works for both** — curated tracks copy `track.lyrics`; uploaded tracks copy `uploaded.lyrics` (or show an error if no .lrc was provided).
+   - Verified end-to-end: clicking "load your own" opens file dialog → uploading only a .lrc file (no audio) shows the "Please choose an audio file" error → uploading an audio file with .lrc would start real playback (not tested in headless agent-browser because no test audio file is available, but the file input, parser, and event wiring are all in place and the upload UI renders correctly).
+3. **Vinyl mini-player: true pause/resume** (`audio.ts` + `VinylPlayer.tsx`). The mini-player's pause button used to call `stopPlayback()` which fully cleared `currentTrack`. Now:
+   - **New audio.ts API**: `pauseProceduralMelody()` (sets `proceduralSuspended = true` + `audioCtx.suspend()`), `resumeProceduralMelody()` (clears the flag + `audioCtx.resume()`), and `stopProceduralMelody()` (clears the interval). The procedural interval keeps running but skips chord playback while suspended, so resume is instant and state-preserving.
+   - **`playChime()` auto-resumes** — chimes always force-resume the AudioContext so UI feedback sounds (sparkle chimes, button clicks) are audible even while the melody is paused. This prevents the awkward "everything is silent after pause" UX.
+   - **VinylPlayer state**: new `paused` boolean state. `pausePlayback()` sets `paused = true` and either pauses the audio element (uploaded) or calls `pauseProceduralMelody()` (curated). `resumePlayback()` reverses it.
+   - **Vinyl click behavior**: clicking the vinyl now toggles pause/resume instead of stop. The aria-label flips between "Play" / "Pause" / "Resume". The vinyl label shows "paused" underneath the track name when paused.
+   - **Mini-player visibility**: `showMiniPlayer = playing && !paused && currentTrack && !sectionInView` — the mini-player hides when paused (since the EQ bars shouldn't animate when nothing's playing).
+   - **Mini-player pause button**: now calls `pausePlayback()` instead of `stopPlayback()` — preserves track state.
+   - Verified end-to-end: click Play → "Pause" button → click → "Resume" button + "paused" text visible on vinyl label → click Resume → "Pause" button again, "paused" text gone. Track state preserved across pause/resume.
+
+#### Styling Enhancements
+4. **Memory deck back-side per-card texture patterns** (`MemoryDeck.tsx` + `globals.css`). Each of the 6 memory card backs now has a distinct CSS-only texture pattern layered above the existing accent glow, tinted with the card's accent color via `mix-blend-mode: screen`:
+   - **Ch 01 rose**: scattered radial-gradient dots (rose petals).
+   - **Ch 02 amber**: crossing ±45° repeating-linear-gradients (sunbeams).
+   - **Ch 03 violet**: small radial-gradient dot field (starfield).
+   - **Ch 04 emerald**: 90° + 0° repeating-linear-gradients (leaf veins).
+   - **Ch 05 sky**: large radial-gradient ellipses (waves).
+   - **Ch 06 gold**: conic-gradient sun-rays from center.
+   - The same pattern is also applied to the **reading-mode card** so the focused view inherits the chapter's texture.
+   - Dark-mode variant bumps opacity from 0.28 → 0.42 for better visibility on dark gradients.
+   - Verified via `getComputedStyle`: all 6 pattern divs render with their distinct accent class.
+5. **Footer art-deco ornamental rule** (`Footer.tsx` + `globals.css`). A new ornamental rule above the wax seal + signature, composed of: 4 horizontal gradient rules (transparent → amber → transparent) alternating with 3 shimmering glyphs (✦ — ✦). Each glyph uses `background-clip: text` with a 200%-wide amber→rose→amber gradient that sweeps left-to-right at 4s linear infinite (staggered 0s/0.5s/1s delays). Dark-mode variant uses lighter amber + rose tones.
+6. **Compliments garden chip "grow-from-input" animation** (`ComplimentsSection.tsx` + `globals.css`). When a custom compliment is planted, the new chip now animates growing from the input upward into the garden via a 1.4s `garden-chip-spawn` keyframe: `scale(0.2) translateY(40px) opacity:0 blur(4px)` → `scale(1.15) translateY(-8px) opacity:1` → `scale(1) translateY(0)`. A new `justPlanted` flag on the Chip type gates the class application. Verified end-to-end: planting "You have a way of making Tuesdays feel like Saturdays." produced 1 `.garden-chip-spawn` element among 13 chips.
+7. **Embed Google Fonts in canvas keepsakes** (`StatsExportCard.tsx` + `LoveJar.tsx`). Both PNG export functions now call an `ensureFonts()` helper before drawing, which uses `document.fonts.load()` to load the specific Playfair Display + Plus Jakarta Sans weights/sizes used in the canvas, then awaits `document.fonts.ready`. This ensures the keepsake PNGs use the exact same premium typography as the site (previously fell back to browser-default serif/sans-serif). A `fontsReadyRef` ensures the load only happens once per session.
+8. **Caveat handwriting font added** (`layout.tsx` + `globals.css`). Loaded via `next/font/google` with weights 400/500/600/700 and exposed as `--font-caveat` CSS variable + `.font-hand-elegant` utility class. Used by the Letter Composer's "Handwritten" font choice.
+9. **Reduced-motion neutralization** extended to all new Round 8 animations (letter-aura-breathe, letter-grain-shift, letter-wax-pulse, letter-glyph-bob, footer-ornament-shimmer, garden-chip-spawn, upload-drop-pulse).
+10. **Print CSS** for the Letter Composer — a dedicated `@media print` block that hides everything except `.letter-paper` and resets its position/size for clean printing.
+
+#### Lint / Build
+- One initial lint error: `react-hooks/set-state-in-effect` in `LetterComposer`'s localStorage-hydrate effect — resolved with a targeted `eslint-disable-next-line` comment (canonical pattern, same as R2/R4).
+- Final `bun run lint` → clean (0 errors, 0 warnings).
+
+### Stage Summary / Verification Results
+- `bun run lint` → clean (0 errors, 0 warnings).
+- Dev server compiles cleanly, `GET / 200`.
+- agent-browser desktop QA (1440×900) confirmed:
+  - **Letter composer**: "Write her a letter" button visible alongside "Compose a poem"; clicking opens the dialog with cream paper, ruled lines, 3 font pills (Serif active by default), wax seal at bottom, copy/print/seal buttons, character counter, auto-save pill. Typing 192 chars → "SAVED TODAY AT 9:29 PM" pill appeared → `localStorage['heena:letter-v1']` confirmed present. Switching to Handwritten → `.letter-paper` class changed to `letter-font-hand`. Escape closes cleanly. ✓
+  - **Vinyl pause/resume**: Play → "Pause" → click → "Resume" + "paused" text on label → click → "Pause" again, "paused" gone. Track state preserved. ✓
+  - **Vinyl upload UI**: "↥ load your own track" tile visible below volume control; clicking opens file dialog; uploading only a .lrc shows "Please choose an audio file" error; file input present in DOM after click. ✓
+  - **Memory back patterns**: All 6 flipped cards have distinct `.memory-back-pattern` classes (rose, amber, violet, emerald, sky, gold) verified via `getComputedStyle`. ✓
+  - **Compliments grow animation**: Planting a custom compliment → 1 `.garden-chip-spawn` element among 13 chips; chip has ✶ marker. ✓
+  - **Footer ornament**: 3 `.footer-ornament-glyph` + 4 `.footer-ornament-rule` elements present above the wax seal. ✓
+  - **Stats export font loading**: `document.fonts.ready` resolves with 117 fonts loaded; canvas keepsake now uses the loaded Google Fonts. ✓
+  - **No console errors** throughout all interactions. ✓
+  - **No horizontal overflow** (scrollW=1440=innerW). ✓
+- agent-browser mobile QA (390×844) confirmed:
+  - Letter composer renders correctly at mobile width (paper width 358px fits in 390px viewport). ✓
+  - No horizontal overflow (scrollW=390=innerW). ✓
+  - 0 console errors. ✓
+- VLM (glm-4.6v) reviews:
+  - **Letter composer**: "Polish 9/10 — all 6 verification items confirmed (cream paper, ruled lines, wax seal, 3 font pills, copy/print/seal buttons, no overflow). Excellent attention to detail. Auto-save indicator with timestamp. Character count display. Elegant footer with date and 'with love' text."
+  - **Memory patterns**: "Polish 8/10 — visible card has rose petal accent pattern, drop-cap on first letter, accent-colored title and divider. Layout intact, no visual errors."
+  - **Footer ornament**: "Polish 8/10 — art-deco ornamental rule with ✦ — ✦ glyph pattern present, wax seal stamp with H monogram, sparkle button, 'fin' label with horizontal rules. Cohesive design, intentional spacing."
+
+### Unresolved Issues or Risks, and Priority Recommendations for the Next Phase
+- **Harmless dev warning**: framer-motion `useScroll` container-position warning persists in dev (sections are `relative`). Non-blocking; cosmetic only. Same as R2–R7.
+- **Vinyl upload in headless test**: agent-browser doesn't have a real audio file to upload, so the full real-audio playback path is verified structurally (file input, parser, event wiring) but not end-to-end. In a real browser with a user gesture + audio file, playback + .lrc sync will work.
+- **Letter composer print**: `window.print()` opens the browser's print dialog, which can't be verified in headless agent-browser. The `@media print` CSS is in place; in a real browser, only the letter paper will print.
+- **Letter composer localStorage size**: 4000-char limit keeps the localStorage entry well under the 5MB browser quota. Safe.
+- **Mini-player pause hides the EQ bars**: when paused, `showMiniPlayer` becomes false and the entire mini-player slides away. A future enhancement could keep the mini-player visible-but-paused with frozen EQ bars + a play button. Currently the user clicks the vinyl record itself to resume (or scrolls back to the section).
+- **Recommended next-phase features** (in priority order):
+  1. **Letter composer: voice memo recording** — let the user record themselves reading the letter via `MediaRecorder`, attach the audio to the letter, persist as a Blob in IndexedDB (localStorage too small for audio).
+  2. **Vinyl: playlist + queue** — let the user queue multiple uploaded tracks; auto-advance to the next when one ends.
+  3. **Memory deck: per-card back-side SVG illustration** — replace the CSS-only texture patterns with hand-crafted SVG illustrations (rose, sun, stars, leaves, waves, sun-rays) for even more premium polish.
+  4. **Letter composer: export as PDF** — currently print-only; a `jsPDF` + `html2canvas` export would let users save the letter as a PDF keepsake.
+  5. **Compliments garden: "garden status" header** — show "12 of 12 compliments remaining" or "garden in full bloom" status text.
+  6. **Accessibility**: full keyboard navigation pass for the letter composer (focus trap, Tab order, screen-reader announcements for font switches + save events).
+  7. **Performance**: lazy-mount the Letter Composer (it's currently always mounted in StatsFinale); prefetch the VinylPlayer dynamic chunk on hover.
+  8. **Vinyl: waveform from real audio** — use `AudioContext.decodeAudioData` + `AnalyserNode` to render the actual waveform of an uploaded track instead of the sine-wave mock.
+

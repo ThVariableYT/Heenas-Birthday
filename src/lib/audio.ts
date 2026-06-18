@@ -6,6 +6,8 @@ let delayNode: DelayNode | null = null;
 let feedbackNode: GainNode | null = null;
 let ambientNodes: { osc: OscillatorNode; gain: GainNode }[] = [];
 let ambientActive = false;
+let proceduralInterval: ReturnType<typeof setInterval> | null = null;
+let proceduralSuspended = false;
 
 export function initAudio() {
   if (audioCtx) return;
@@ -57,6 +59,16 @@ export function resumeAudio() {
   }
 }
 
+/**
+ * Suspend the entire AudioContext — used by the vinyl mini-player's pause
+ * button to pause the procedural melody + ambient pad without losing state.
+ */
+export function suspendAudio() {
+  if (audioCtx && audioCtx.state === "running") {
+    audioCtx.suspend();
+  }
+}
+
 export function playChime(
   freq: number,
   type: OscillatorType = "sine",
@@ -64,6 +76,10 @@ export function playChime(
   volume = 0.12,
 ) {
   if (!audioCtx || !mainGain) return;
+  // Resume if suspended — chimes should always be audible
+  if (audioCtx.state === "suspended") {
+    audioCtx.resume();
+  }
   try {
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
@@ -132,7 +148,17 @@ export function startProceduralMelody(onChord: (time: number) => void) {
   ];
   let idx = 0;
   let mockTime = 0;
+  proceduralSuspended = false;
+  // Clear any existing interval before starting a new one
+  if (proceduralInterval) {
+    clearInterval(proceduralInterval);
+    proceduralInterval = null;
+  }
   const interval = setInterval(() => {
+    // If the AudioContext is suspended (paused), skip the chord — but keep the interval alive
+    if (proceduralSuspended || (audioCtx && audioCtx.state === "suspended")) {
+      return;
+    }
     const chord = chords[idx];
     chord.forEach((note, i) => {
       setTimeout(() => playChime(note, "sine", 2.8, 0.07), i * 180);
@@ -141,5 +167,34 @@ export function startProceduralMelody(onChord: (time: number) => void) {
     mockTime += 2;
     onChord(mockTime);
   }, 2000);
+  proceduralInterval = interval;
   return interval;
+}
+
+/**
+ * Mark the procedural melody as paused — the interval keeps running but
+ * skips chord playback. Pair with suspendAudio() for a true pause.
+ */
+export function pauseProceduralMelody() {
+  proceduralSuspended = true;
+  suspendAudio();
+}
+
+/**
+ * Resume the procedural melody after a pause.
+ */
+export function resumeProceduralMelody() {
+  proceduralSuspended = false;
+  resumeAudio();
+}
+
+/**
+ * Fully stop the procedural melody (clears the interval).
+ */
+export function stopProceduralMelody() {
+  proceduralSuspended = false;
+  if (proceduralInterval) {
+    clearInterval(proceduralInterval);
+    proceduralInterval = null;
+  }
 }

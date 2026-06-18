@@ -182,6 +182,9 @@ function MemoryCardItem({
             {/* Accent-tinted glow tied to the per-card accent color */}
             <div className="memory-back-accent-glow" aria-hidden />
 
+            {/* Per-card texture pattern — rose petals / sunbeams / starfield / etc. */}
+            <div className={`memory-back-pattern ${card.glyphAccent}`} aria-hidden />
+
             {/* Decorative quote marks flanking the body */}
             <span className="memory-back-quote-mark pointer-events-none absolute left-4 top-4" aria-hidden>&ldquo;</span>
             <span className="memory-back-quote-mark trailing pointer-events-none absolute bottom-12 right-4" aria-hidden>&ldquo;</span>
@@ -604,6 +607,9 @@ export default function MemoryDeck() {
               <span className="corner-flourish corner-flourish-tr" aria-hidden />
               <span className="corner-flourish corner-flourish-bl" aria-hidden />
               <span className="corner-flourish corner-flourish-br" aria-hidden />
+
+              {/* Per-card accent texture pattern overlay */}
+              <div className={`memory-back-pattern ${memoryCards[readingIndex].glyphAccent}`} aria-hidden />
 
               {/* Top label + counter */}
               <div className="mb-6 flex items-center justify-between">

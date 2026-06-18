@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Playfair_Display, Plus_Jakarta_Sans, Fira_Code } from "next/font/google";
+import { Playfair_Display, Plus_Jakarta_Sans, Fira_Code, Caveat } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from "@/components/birthday/theme-provider";
@@ -26,6 +26,13 @@ const firaCode = Fira_Code({
   display: "swap",
 });
 
+const caveat = Caveat({
+  variable: "--font-caveat",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
+});
+
 export const metadata: Metadata = {
   title: "For Heena — A Birthday Composed in Code",
   description: "An interactive birthday card composed of light, sound, and memory. Crafted with care.",
@@ -49,7 +56,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${playfair.variable} ${jakarta.variable} ${firaCode.variable} antialiased`}
+        className={`${playfair.variable} ${jakarta.variable} ${firaCode.variable} ${caveat.variable} antialiased`}
       >
         <ThemeProvider
           attribute="class"

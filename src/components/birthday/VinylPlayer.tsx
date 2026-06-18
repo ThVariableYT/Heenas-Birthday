@@ -1,12 +1,43 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { tracks, type Track } from "@/lib/birthday-data";
 import { sparkle } from "./SparkleCanvas";
-import { playChime, startProceduralMelody, setMasterVolume, getMasterVolume } from "@/lib/audio";
+import { playChime, startProceduralMelody, setMasterVolume, getMasterVolume, pauseProceduralMelody, resumeProceduralMelody } from "@/lib/audio";
 import { useStatsStore } from "@/lib/stats-store";
 import SectionHeader from "./SectionHeader";
+
+type LyricLine = { time: number; text: string };
+
+type UploadedTrack = {
+  name: string;
+  url: string;
+  duration: number;
+  lyrics: LyricLine[];
+  lrcName?: string;
+};
+
+/** Parse .lrc file content into timed lyric lines. */
+function parseLrc(content: string): LyricLine[] {
+  const lines = content.split(/\r?\n/);
+  const out: LyricLine[] = [];
+  const timeRe = /\[(\d{1,2}):(\d{1,2})(?:[.:](\d{1,3}))?\]/g;
+  for (const raw of lines) {
+    const text = raw.replace(timeRe, "").trim();
+    if (!text) continue;
+    let m: RegExpExecArray | null;
+    timeRe.lastIndex = 0;
+    while ((m = timeRe.exec(raw)) !== null) {
+      const mm = parseInt(m[1], 10);
+      const ss = parseInt(m[2], 10);
+      const ms = m[3] ? parseInt(m[3].padEnd(3, "0").slice(0, 3), 10) : 0;
+      out.push({ time: mm * 60 + ss + ms / 1000, text });
+    }
+  }
+  out.sort((a, b) => a.time - b.time);
+  return out;
+}
 
 function parseDuration(d: string): number {
   const m = d.match(/(\d+):(\d+)/);
@@ -43,8 +74,10 @@ function Waveform({ active, progress }: { active: boolean; progress: number }) {
 }
 
 export default function VinylPlayer() {
-  const [currentTrack, setCurrentTrack] = useState<Track | null>(null);
+  const [currentTrack, setCurrentTrack] = useState<Track | UploadedTrack | null>(null);
+  const [uploaded, setUploaded] = useState<UploadedTrack | null>(null);
   const [playing, setPlaying] = useState(false);
+  const [paused, setPaused] = useState(false);
   const [activeLyricIndex, setActiveLyricIndex] = useState(-1);
   const [elapsed, setElapsed] = useState(0);
   const [volume, setVolume] = useState(0.35);
@@ -52,9 +85,12 @@ export default function VinylPlayer() {
   const [duration, setDuration] = useState(32);
   const [copied, setCopied] = useState(false);
   const [sectionInView, setSectionInView] = useState(true);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const proceduralRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const elapsedRef = useRef(0);
   const sectionRef = useRef<HTMLElement>(null);
+  const audioElRef = useRef<HTMLAudioElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const incStat = useStatsStore((s) => s.inc);
 
   useEffect(() => {
@@ -77,21 +113,25 @@ export default function VinylPlayer() {
     return () => observer.disconnect();
   }, []);
 
-  const showMiniPlayer = playing && currentTrack && !sectionInView;
+  const showMiniPlayer = playing && !paused && currentTrack && !sectionInView;
 
   useEffect(() => {
     setMasterVolume(muted ? 0 : volume);
+    if (audioElRef.current) {
+      audioElRef.current.volume = muted ? 0 : volume;
+    }
   }, [volume, muted]);
 
+  // Procedural-melody elapsed-time ticker (only for non-uploaded tracks)
   useEffect(() => {
-    if (!playing || !currentTrack) return;
+    if (!playing || paused || !currentTrack || uploaded) return;
     const interval = setInterval(() => {
       setElapsed((prev) => {
         const next = prev + 0.5;
         if (next >= duration) {
           return prev;
         }
-        const lyrics = currentTrack.lyrics;
+        const lyrics = (currentTrack as Track).lyrics || [];
         let idx = -1;
         for (let i = 0; i < lyrics.length; i++) {
           if (next >= lyrics[i].time) idx = i;
@@ -102,7 +142,7 @@ export default function VinylPlayer() {
       });
     }, 500);
     return () => clearInterval(interval);
-  }, [playing, currentTrack, duration]);
+  }, [playing, paused, currentTrack, duration, uploaded]);
 
   const selectTrack = (track: Track, e: React.MouseEvent) => {
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
@@ -111,6 +151,15 @@ export default function VinylPlayer() {
     if (currentTrack?.name === track.name && playing) {
       stopPlayback();
       return;
+    }
+
+    // If switching from uploaded audio, clear it
+    if (uploaded) {
+      if (audioElRef.current) {
+        audioElRef.current.pause();
+        audioElRef.current.src = "";
+      }
+      setUploaded(null);
     }
 
     // Count a newly-selected track (only when switching to a different one or starting fresh)
@@ -127,6 +176,7 @@ export default function VinylPlayer() {
     setDuration(parseDuration(track.duration));
     setCurrentTrack(track);
     setPlaying(true);
+    setPaused(false);
     setElapsed(0);
     setActiveLyricIndex(-1);
 
@@ -139,6 +189,7 @@ export default function VinylPlayer() {
 
   const stopPlayback = () => {
     setPlaying(false);
+    setPaused(false);
     setCurrentTrack(null);
     setElapsed(0);
     setActiveLyricIndex(-1);
@@ -146,12 +197,46 @@ export default function VinylPlayer() {
       clearInterval(proceduralRef.current);
       proceduralRef.current = null;
     }
+    if (audioElRef.current) {
+      audioElRef.current.pause();
+      audioElRef.current.currentTime = 0;
+    }
     playChime(220, "sine", 0.8, 0.08);
+  };
+
+  /** True pause — suspends the procedural melody without losing track state. */
+  const pausePlayback = () => {
+    if (!playing) return;
+    setPaused(true);
+    if (uploaded && audioElRef.current) {
+      audioElRef.current.pause();
+    } else {
+      pauseProceduralMelody();
+    }
+    playChime(330, "sine", 0.4, 0.08);
+  };
+
+  /** Resume after a true pause. */
+  const resumePlayback = () => {
+    if (!playing || !paused) return;
+    setPaused(false);
+    if (uploaded && audioElRef.current) {
+      audioElRef.current.play().catch(() => {
+        // no-op
+      });
+    } else {
+      resumeProceduralMelody();
+    }
+    playChime(523.25, "sine", 0.4, 0.08);
   };
 
   const handleVinylClick = () => {
     if (playing) {
-      stopPlayback();
+      if (paused) {
+        resumePlayback();
+      } else {
+        pausePlayback();
+      }
     } else if (tracks[0]) {
       selectTrack(tracks[0], { currentTarget: { getBoundingClientRect: () => ({ left: 0, top: 0, width: 0, height: 0 }) } } as unknown as React.MouseEvent);
     }
@@ -163,10 +248,14 @@ export default function VinylPlayer() {
     const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
     const newTime = ratio * duration;
     setElapsed(newTime);
+    if (uploaded && audioElRef.current) {
+      audioElRef.current.currentTime = newTime;
+    }
     setActiveLyricIndex(() => {
       let idx = -1;
-      for (let i = 0; i < currentTrack.lyrics.length; i++) {
-        if (newTime >= currentTrack.lyrics[i].time) idx = i;
+      const lyrics = (currentTrack as Track).lyrics || (uploaded?.lyrics ?? []);
+      for (let i = 0; i < lyrics.length; i++) {
+        if (newTime >= lyrics[i].time) idx = i;
         else break;
       }
       return idx;
@@ -179,6 +268,9 @@ export default function VinylPlayer() {
     if (!currentTrack) return;
     const newTime = Math.max(0, Math.min(duration, time));
     setElapsed(newTime);
+    if (uploaded && audioElRef.current) {
+      audioElRef.current.currentTime = newTime;
+    }
     setActiveLyricIndex(idx);
     playChime(440 + (idx + 1) * 60, "sine", 0.4, 0.08);
     sparkle({ x: window.innerWidth / 2, y: window.innerHeight / 2, count: 6, kind: "gold" });
@@ -196,11 +288,126 @@ export default function VinylPlayer() {
   const fmt = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
   const progress = currentTrack ? Math.min(elapsed / duration, 1) : 0;
 
+  /** Handle a user-uploaded audio file + optional .lrc. */
+  const handleUpload = useCallback((files: FileList | null) => {
+    setUploadError(null);
+    if (!files || files.length === 0) return;
+    const audioFile = Array.from(files).find((f) => f.type.startsWith("audio/"));
+    const lrcFile = Array.from(files).find((f) => f.name.toLowerCase().endsWith(".lrc") || f.type === "text/plain");
+    if (!audioFile) {
+      setUploadError("Please choose an audio file (mp3, wav, ogg, m4a…).");
+      return;
+    }
+    const url = URL.createObjectURL(audioFile);
+    const reader = new FileReader();
+    reader.onload = () => {
+      const lrcText = typeof reader.result === "string" ? reader.result : "";
+      const lyrics = lrcText ? parseLrc(lrcText) : [];
+      const uploadedTrack: UploadedTrack = {
+        name: audioFile.name.replace(/\.[^.]+$/, ""),
+        url,
+        duration: 0, // will be set when audio metadata loads
+        lyrics,
+        lrcName: lrcFile?.name,
+      };
+      // Stop procedural melody if running
+      if (proceduralRef.current) {
+        clearInterval(proceduralRef.current);
+        proceduralRef.current = null;
+      }
+      setUploaded(uploadedTrack);
+      setCurrentTrack(uploadedTrack);
+      setPlaying(true);
+      setPaused(false);
+      setElapsed(0);
+      setActiveLyricIndex(-1);
+      incStat("tracksPlayed", 1);
+      incStat("sparklesFired", 1);
+      sparkle({ x: window.innerWidth / 2, y: window.innerHeight / 2, count: 22, kind: "rainbow" });
+      playChime(783.99, "sine", 0.8, 0.12);
+    };
+    if (lrcFile) {
+      reader.readAsText(lrcFile);
+    } else {
+      // No .lrc — proceed with empty lyrics
+      reader.onload({ target: { result: "" } } as unknown as ProgressEvent<FileReader>);
+    }
+  }, [incStat]);
+
+  /** Audio element event handlers — wired when uploaded track plays. */
+  useEffect(() => {
+    const el = audioElRef.current;
+    if (!el || !uploaded) return;
+    const onLoaded = () => {
+      setDuration(el.duration || 0);
+      el.volume = muted ? 0 : volume;
+      el.play().catch(() => {
+        // no-op — autoplay may require user gesture
+      });
+    };
+    const onTime = () => {
+      setElapsed(el.currentTime);
+      const lyrics = uploaded.lyrics;
+      if (lyrics.length > 0) {
+        let idx = -1;
+        for (let i = 0; i < lyrics.length; i++) {
+          if (el.currentTime >= lyrics[i].time) idx = i;
+          else break;
+        }
+        setActiveLyricIndex(idx);
+      }
+    };
+    const onEnd = () => {
+      setPlaying(false);
+      setPaused(false);
+      setActiveLyricIndex(-1);
+      setElapsed(0);
+    };
+    el.addEventListener("loadedmetadata", onLoaded);
+    el.addEventListener("timeupdate", onTime);
+    el.addEventListener("ended", onEnd);
+    return () => {
+      el.removeEventListener("loadedmetadata", onLoaded);
+      el.removeEventListener("timeupdate", onTime);
+      el.removeEventListener("ended", onEnd);
+    };
+  }, [uploaded, muted, volume]);
+
+  // Cleanup object URL on unmount or new upload
+  useEffect(() => {
+    return () => {
+      if (uploaded) URL.revokeObjectURL(uploaded.url);
+    };
+  }, [uploaded]);
+
+  const clearUpload = () => {
+    if (audioElRef.current) {
+      audioElRef.current.pause();
+      audioElRef.current.src = "";
+    }
+    if (uploaded) URL.revokeObjectURL(uploaded.url);
+    setUploaded(null);
+    if (currentTrack && (currentTrack as UploadedTrack).url) {
+      setCurrentTrack(null);
+      setPlaying(false);
+      setPaused(false);
+      setElapsed(0);
+      setActiveLyricIndex(-1);
+    }
+    playChime(392, "sine", 0.4, 0.08);
+  };
+
   const copyLyrics = async () => {
     if (!currentTrack) return;
+    const lyrics = uploaded?.lyrics ?? (currentTrack as Track).lyrics.map((l) => ({ time: l.time, text: l.text }));
+    if (lyrics.length === 0) {
+      setUploadError("No lyrics available for this track.");
+      setTimeout(() => setUploadError(null), 2400);
+      return;
+    }
     const text =
-      `${currentTrack.name}\n${currentTrack.mood}\n\n` +
-      currentTrack.lyrics.map((l) => l.text).join("\n") +
+      `${currentTrack.name}\n${uploaded ? "uploaded track" : (currentTrack as Track).mood}\n\n` +
+      lyrics.map((l) => l.text).join("\n") +
       `\n\n— for Heena`;
     try {
       await navigator.clipboard.writeText(text);
@@ -217,6 +424,9 @@ export default function VinylPlayer() {
       // no-op
     }
   };
+
+  const activeLyrics: LyricLine[] = uploaded?.lyrics ?? ((currentTrack as Track)?.lyrics?.map((l) => ({ time: l.time, text: l.text })) ?? []);
+  const isUploadedTrack = !!uploaded && currentTrack?.name === uploaded.name;
 
   return (
     <section ref={sectionRef} className="relative px-4 py-32">
@@ -262,11 +472,11 @@ export default function VinylPlayer() {
         >
           <div className="relative">
             <div
-              className={`vinyl-glow absolute -inset-3 rounded-full ${playing ? "playing" : ""}`}
+              className={`vinyl-glow absolute -inset-3 rounded-full ${playing && !paused ? "playing" : ""}`}
               aria-hidden
             />
             {/* Vinyl groove pulse rings — expanding concentric rings while playing */}
-            {playing && (
+            {playing && !paused && (
               <>
                 <span className="vinyl-groove-ring" style={{ animationDelay: "0s" }} aria-hidden />
                 <span className="vinyl-groove-ring" style={{ animationDelay: "1.1s" }} aria-hidden />
@@ -276,25 +486,30 @@ export default function VinylPlayer() {
             <motion.button
               onClick={handleVinylClick}
               className="relative h-56 w-56 cursor-pointer rounded-full focus-ring-visible"
-              aria-label={playing ? "Pause" : "Play"}
+              aria-label={playing ? (paused ? "Resume" : "Pause") : "Play"}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
             >
               <motion.div
-                className={`vinyl-metallic absolute inset-0 rounded-full ${playing ? "" : "paused-record"}`}
-                animate={playing ? { rotate: 360 } : { rotate: 0 }}
-                transition={playing ? { duration: 11, repeat: Infinity, ease: "linear" } : { duration: 0 }}
+                className={`vinyl-metallic absolute inset-0 rounded-full ${playing && !paused ? "" : "paused-record"}`}
+                animate={playing && !paused ? { rotate: 360 } : { rotate: 0 }}
+                transition={playing && !paused ? { duration: 11, repeat: Infinity, ease: "linear" } : { duration: 0 }}
               />
               <div className="absolute inset-0 rounded-full ring-2 ring-stone-900/40" />
               <div className="absolute inset-[15%] rounded-full bg-gradient-to-br from-rose-400 to-amber-500 shadow-inner">
                 <div className="absolute inset-2 rounded-full bg-gradient-to-br from-amber-100 to-rose-200 opacity-90">
                   <div className="flex h-full flex-col items-center justify-center text-center">
                     <span className="font-serif-elegant text-[0.6rem] uppercase tracking-[0.3em] text-rose-800/70">
-                      side a
+                      {isUploadedTrack ? "your side a" : "side a"}
                     </span>
-                    <span className="mt-1 font-serif-elegant text-sm font-bold text-rose-900">
+                    <span className="mt-1 line-clamp-2 px-2 font-serif-elegant text-sm font-bold text-rose-900">
                       {currentTrack ? currentTrack.name : "for heena"}
                     </span>
+                    {paused && (
+                      <span className="mt-1 font-mono-elegant text-[0.5rem] uppercase tracking-[0.2em] text-rose-700/70">
+                        paused
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -303,7 +518,7 @@ export default function VinylPlayer() {
 
             <motion.div
               className="absolute -right-2 -top-6 h-20 w-2 origin-bottom rounded-full bg-gradient-to-b from-stone-300 to-stone-500 shadow-lg"
-              animate={{ rotate: playing ? 5 : -15 }}
+              animate={{ rotate: playing && !paused ? 5 : -15 }}
               transition={{ duration: 1, ease: "easeInOut" }}
               style={{ transformOrigin: "bottom right" }}
             >
@@ -312,7 +527,7 @@ export default function VinylPlayer() {
           </div>
 
           <div className="mt-6 w-full">
-            <Waveform active={playing} progress={progress} />
+            <Waveform active={playing && !paused} progress={progress} />
           </div>
 
           <div className="mt-5 flex w-full items-center gap-3">
@@ -359,10 +574,10 @@ export default function VinylPlayer() {
               {[0, 1, 2, 3].map((i) => (
                 <div
                   key={i}
-                  className={`w-1 rounded-full bg-amber-500 ${playing ? "music-bar-active" : ""}`}
+                  className={`w-1 rounded-full bg-amber-500 ${playing && !paused ? "music-bar-active" : ""}`}
                   style={{
                     height: "4px",
-                    animationDelay: playing ? `${i * 0.15}s` : "0s",
+                    animationDelay: playing && !paused ? `${i * 0.15}s` : "0s",
                   }}
                 />
               ))}
@@ -375,9 +590,68 @@ export default function VinylPlayer() {
                 exit={{ opacity: 0, y: -5 }}
                 className="font-serif-elegant text-sm italic text-stone-600"
               >
-                {currentTrack ? currentTrack.name : "tap to play a song"}
+                {currentTrack ? (paused ? `${currentTrack.name} · paused` : currentTrack.name) : "tap to play a song"}
               </motion.span>
             </AnimatePresence>
+          </div>
+
+          {/* Hidden audio element for real audio playback */}
+          <audio
+            ref={audioElRef}
+            src={uploaded?.url}
+            preload="metadata"
+            className="hidden"
+          />
+
+          {/* Upload UI — load your own audio + .lrc */}
+          <div className="mt-5 w-full">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="audio/*,.lrc"
+              multiple
+              onChange={(e) => handleUpload(e.target.files)}
+              className="hidden"
+              aria-label="Upload an audio file and optional .lrc lyrics"
+            />
+            {uploaded ? (
+              <div className="vinyl-upload has-file">
+                <div className="flex items-center justify-center gap-2 text-xs">
+                  <span className="text-emerald-700" aria-hidden>✓</span>
+                  <span className="font-mono-elegant text-[0.6rem] uppercase tracking-[0.2em] text-emerald-700">
+                    {uploaded.lrcName ? "audio + lyrics loaded" : "audio loaded"}
+                  </span>
+                </div>
+                <p className="mt-1 line-clamp-1 font-serif-elegant text-xs italic text-stone-600">
+                  {uploaded.name}{uploaded.lrcName ? ` · ${uploaded.lrcName}` : ""}
+                </p>
+                <button
+                  type="button"
+                  onClick={clearUpload}
+                  className="mt-2 font-mono-elegant text-[0.55rem] uppercase tracking-[0.2em] text-rose-600 transition-colors hover:text-rose-800"
+                >
+                  ✕ remove upload
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="vinyl-upload block w-full cursor-pointer"
+              >
+                <div className="font-mono-elegant text-[0.55rem] uppercase tracking-[0.2em] text-amber-700/80">
+                  ↥ load your own track
+                </div>
+                <p className="mt-1 font-serif-elegant text-[0.7rem] italic text-stone-500">
+                  choose an audio file — add a .lrc for synced lyrics
+                </p>
+              </button>
+            )}
+            {uploadError && (
+              <p className="mt-2 text-center font-mono-elegant text-[0.55rem] uppercase tracking-[0.15em] text-rose-600">
+                {uploadError}
+              </p>
+            )}
           </div>
         </motion.div>
 
@@ -478,26 +752,32 @@ export default function VinylPlayer() {
                   </button>
                 </div>
                 <div className="no-scrollbar overflow-y-auto p-5" style={{ maxHeight: 240 }}>
-                  {currentTrack.lyrics.map((line, i) => (
-                    <div
-                      key={i}
-                      onClick={() => seekToLyric(line.time, i)}
-                      className={`lyric-line cursor-pointer font-serif-elegant text-base transition-colors hover:text-amber-700 ${
-                        i === activeLyricIndex ? "active" : ""
-                      }`}
-                      title={`Jump to ${line.text.slice(0, 24)}…`}
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          seekToLyric(line.time, i);
-                        }
-                      }}
-                    >
-                      {line.text}
-                    </div>
-                  ))}
+                  {activeLyrics.length === 0 ? (
+                    <p className="py-8 text-center font-serif-elegant text-sm italic text-stone-500">
+                      No lyrics for this track yet — load a .lrc to see synced lines.
+                    </p>
+                  ) : (
+                    activeLyrics.map((line, i) => (
+                      <div
+                        key={i}
+                        onClick={() => seekToLyric(line.time, i)}
+                        className={`lyric-line cursor-pointer font-serif-elegant text-base transition-colors hover:text-amber-700 ${
+                          i === activeLyricIndex ? "active" : ""
+                        }`}
+                        title={`Jump to ${line.text.slice(0, 24)}…`}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            seekToLyric(line.time, i);
+                          }
+                        }}
+                      >
+                        {line.text}
+                      </div>
+                    ))
+                  )}
                 </div>
               </motion.div>
             )}
@@ -508,7 +788,7 @@ export default function VinylPlayer() {
               <div className="mb-1.5 flex items-center justify-between font-mono-elegant text-[0.6rem] text-stone-500">
                 <span>{fmt(elapsed)}</span>
                 <span className="opacity-60">click bar to seek</span>
-                <span>{fmt(duration)}</span>
+                <span>{duration > 0 ? fmt(duration) : "—"}</span>
               </div>
               <div
                 onClick={seek}
@@ -535,7 +815,7 @@ export default function VinylPlayer() {
       </div>
 
       {/* Floating "now playing" mini-player — appears only when music is
-          playing and the user has scrolled away from the vinyl section. */}
+          playing (not paused) and the user has scrolled away from the vinyl section. */}
       <div
         className={`now-playing-mini ${showMiniPlayer ? "visible" : ""}`}
         role="region"
@@ -543,9 +823,7 @@ export default function VinylPlayer() {
       >
         <button
           type="button"
-          onClick={() => {
-            stopPlayback();
-          }}
+          onClick={pausePlayback}
           className="npm-jump"
           aria-label="Pause playback"
           title="Pause"

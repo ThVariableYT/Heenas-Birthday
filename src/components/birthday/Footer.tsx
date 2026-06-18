@@ -45,6 +45,17 @@ export default function Footer() {
       <div className="mx-auto max-w-3xl">
         <div className="editorial-line mb-12" />
 
+        {/* Art-deco ornamental rule above the signature */}
+        <div className="footer-ornament" aria-hidden>
+          <span className="footer-ornament-rule" />
+          <span className="footer-ornament-glyph">✦</span>
+          <span className="footer-ornament-rule" />
+          <span className="footer-ornament-glyph" style={{ animationDelay: "0.5s" }}>—</span>
+          <span className="footer-ornament-rule" />
+          <span className="footer-ornament-glyph" style={{ animationDelay: "1s" }}>✦</span>
+          <span className="footer-ornament-rule" />
+        </div>
+
         <motion.div
           className="flex flex-col items-center gap-6 text-center"
           initial={{ opacity: 0, y: 20 }}
