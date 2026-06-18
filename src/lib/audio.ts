@@ -31,6 +31,26 @@ export function initAudio() {
   }
 }
 
+export function setMasterVolume(v: number) {
+  if (!audioCtx || !mainGain) return;
+  const clamped = Math.max(0, Math.min(1, v));
+  try {
+    mainGain.gain.cancelScheduledValues(audioCtx.currentTime);
+    mainGain.gain.linearRampToValueAtTime(clamped, audioCtx.currentTime + 0.1);
+  } catch {
+    // no-op
+  }
+}
+
+export function getMasterVolume(): number {
+  if (!mainGain) return 0.35;
+  try {
+    return mainGain.gain.value;
+  } catch {
+    return 0.35;
+  }
+}
+
 export function resumeAudio() {
   if (audioCtx && audioCtx.state === "suspended") {
     audioCtx.resume();

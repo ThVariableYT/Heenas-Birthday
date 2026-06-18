@@ -10,13 +10,17 @@ function MemoryCardItem({
   card,
   index,
   flipped,
+  favorite,
   onFlip,
+  onToggleFavorite,
   order,
 }: {
   card: MemoryCard;
   index: number;
   flipped: boolean;
+  favorite: boolean;
   onFlip: (next: boolean, rect: DOMRect) => void;
+  onToggleFavorite: (rect: DOMRect) => void;
   order: number;
 }) {
   const [tilt, setTilt] = useState({ rx: 0, ry: 0 });
@@ -59,11 +63,25 @@ function MemoryCardItem({
       />
 
       <div
-        className="group relative h-[380px] w-[280px] cursor-pointer perspective"
+        className="group relative h-[380px] w-[280px] cursor-pointer perspective focus-ring-visible"
         ref={cardRef}
         onPointerMove={handleMove}
         onPointerLeave={handleLeave}
         onClick={handleClick}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            const rect = e.currentTarget.getBoundingClientRect();
+            onFlip(!flipped, rect);
+          } else if (e.key === "Escape" && flipped) {
+            e.preventDefault();
+            const rect = e.currentTarget.getBoundingClientRect();
+            onFlip(false, rect);
+          }
+        }}
+        tabIndex={0}
+        role="button"
+        aria-label={`Memory card: ${card.front.title}. ${flipped ? "Revealed. Press Enter to close." : "Press Enter to reveal."}`}
         style={{ marginLeft: side > 0 ? "auto" : undefined, marginRight: side < 0 ? "auto" : undefined }}
       >
         <div className="glow-aura" />
@@ -83,7 +101,34 @@ function MemoryCardItem({
                 <span className="font-mono-elegant text-[0.6rem] uppercase tracking-[0.3em] text-stone-500">
                   {card.front.label}
                 </span>
-                <span className="text-2xl text-amber-600/70">{card.front.glyph}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl text-amber-600/70">{card.front.glyph}</span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      onToggleFavorite(rect);
+                    }}
+                    className="flex h-7 w-7 items-center justify-center rounded-full border border-rose-300/50 bg-white/70 text-rose-500 backdrop-blur transition-all hover:scale-110 hover:bg-rose-50 focus-ring-visible"
+                    aria-label={favorite ? "Remove from favorites" : "Add to favorites"}
+                    aria-pressed={favorite}
+                  >
+                    <motion.svg
+                      width="13"
+                      height="13"
+                      viewBox="0 0 24 24"
+                      fill={favorite ? "currentColor" : "none"}
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      animate={favorite ? { scale: [1, 1.3, 1] } : {}}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
+                    </motion.svg>
+                  </button>
+                </div>
               </div>
 
               <div>
@@ -151,6 +196,7 @@ export default function MemoryDeck() {
   const headingY = useTransform(scrollYProgress, [0, 1], [60, -60]);
 
   const [flippedSet, setFlippedSet] = useState<Set<number>>(new Set());
+  const [favoritesSet, setFavoritesSet] = useState<Set<number>>(new Set());
   const [order, setOrder] = useState<number[]>(memoryCards.map((_, i) => i));
 
   const handleFlip = useCallback(
@@ -176,9 +222,37 @@ export default function MemoryDeck() {
     [],
   );
 
+  const toggleFavorite = useCallback((cardId: number, rect: DOMRect) => {
+    setFavoritesSet((prev) => {
+      const next = new Set(prev);
+      if (next.has(cardId)) next.delete(cardId);
+      else next.add(cardId);
+      return next;
+    });
+    const isFav = favoritesSet.has(cardId);
+    if (!isFav) {
+      sparkle({
+        x: rect.left + rect.width / 2,
+        y: rect.top + rect.height / 2,
+        count: 14,
+        kind: "rose",
+      });
+      playChime(659.25, "sine", 0.6, 0.1);
+    } else {
+      playChime(392, "sine", 0.4, 0.08);
+    }
+  }, [favoritesSet]);
+
+  const sortedOrder = [...order].sort((a, b) => {
+    const aFav = favoritesSet.has(memoryCards[a].id) ? 0 : 1;
+    const bFav = favoritesSet.has(memoryCards[b].id) ? 0 : 1;
+    return aFav - bFav;
+  });
+
   const revealedCount = flippedSet.size;
   const total = memoryCards.length;
   const allRevealed = revealedCount === total;
+  const favoritesCount = favoritesSet.size;
 
   const revealAll = () => {
     const all = new Set(memoryCards.map((c) => c.id));
@@ -291,7 +365,7 @@ export default function MemoryDeck() {
       </div>
 
       <div className="mx-auto flex max-w-5xl flex-col gap-12">
-        {order.map((cardIndex, displayIndex) => {
+        {sortedOrder.map((cardIndex, displayIndex) => {
           const card = memoryCards[cardIndex];
           return (
             <MemoryCardItem
@@ -300,11 +374,22 @@ export default function MemoryDeck() {
               index={cardIndex}
               order={displayIndex}
               flipped={flippedSet.has(card.id)}
+              favorite={favoritesSet.has(card.id)}
               onFlip={(next, rect) => handleFlip(card.id, next, rect, cardIndex)}
+              onToggleFavorite={(rect) => toggleFavorite(card.id, rect)}
             />
           );
         })}
       </div>
+
+      {favoritesCount > 0 && (
+        <div className="mx-auto mt-10 flex max-w-md items-center justify-center gap-2 text-center">
+          <span className="text-rose-500">♥</span>
+          <span className="font-mono-elegant text-[0.6rem] uppercase tracking-[0.3em] text-stone-500">
+            {favoritesCount} {favoritesCount === 1 ? "favorite" : "favorites"} pinned to the top
+          </span>
+        </div>
+      )}
     </section>
   );
 }

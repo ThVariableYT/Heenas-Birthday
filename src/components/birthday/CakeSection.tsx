@@ -3,6 +3,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { sparkle } from "./SparkleCanvas";
+import { fireConfetti } from "./ConfettiRain";
 import { playChime } from "@/lib/audio";
 import { wishMessages } from "@/lib/birthday-data";
 
@@ -55,6 +56,7 @@ export default function CakeSection() {
             count: 50,
             kind: "rainbow",
           });
+          fireConfetti(140);
         }, 400);
       }
       return next;

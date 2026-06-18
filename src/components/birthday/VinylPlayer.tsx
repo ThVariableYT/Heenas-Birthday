@@ -1,16 +1,53 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { tracks, type Track } from "@/lib/birthday-data";
 import { sparkle } from "./SparkleCanvas";
-import { playChime, startProceduralMelody } from "@/lib/audio";
+import { playChime, startProceduralMelody, setMasterVolume, getMasterVolume } from "@/lib/audio";
+
+function parseDuration(d: string): number {
+  const m = d.match(/(\d+):(\d+)/);
+  if (!m) return 32;
+  return parseInt(m[1]) * 60 + parseInt(m[2]);
+}
+
+function Waveform({ active, progress }: { active: boolean; progress: number }) {
+  const bars = useMemo(() => Array.from({ length: 48 }, (_, i) => 0.2 + Math.abs(Math.sin(i * 0.7)) * 0.8), []);
+  return (
+    <div className="flex h-10 items-end gap-[2px]">
+      {bars.map((b, i) => {
+        const filled = i / bars.length <= progress;
+        const animName = active && filled ? "bounce-bar" : "none";
+        const animDur = `${0.6 + (i % 4) * 0.1}s`;
+        return (
+          <div
+            key={i}
+            className={`w-1 rounded-full transition-colors ${filled ? "bg-gradient-to-t from-amber-500 to-rose-400" : "bg-stone-300/70"}`}
+            style={{
+              height: `${b * 100}%`,
+              animationName: animName,
+              animationDuration: animDur,
+              animationTimingFunction: "ease-in-out",
+              animationIterationCount: "infinite",
+              animationDirection: "alternate",
+              animationDelay: `${i * 0.03}s`,
+            }}
+          />
+        );
+      })}
+    </div>
+  );
+}
 
 export default function VinylPlayer() {
   const [currentTrack, setCurrentTrack] = useState<Track | null>(null);
   const [playing, setPlaying] = useState(false);
   const [activeLyricIndex, setActiveLyricIndex] = useState(-1);
   const [elapsed, setElapsed] = useState(0);
+  const [volume, setVolume] = useState(0.35);
+  const [muted, setMuted] = useState(false);
+  const [duration, setDuration] = useState(32);
   const proceduralRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const elapsedRef = useRef(0);
 
@@ -19,10 +56,17 @@ export default function VinylPlayer() {
   }, [elapsed]);
 
   useEffect(() => {
+    setMasterVolume(muted ? 0 : volume);
+  }, [volume, muted]);
+
+  useEffect(() => {
     if (!playing || !currentTrack) return;
     const interval = setInterval(() => {
       setElapsed((prev) => {
         const next = prev + 0.5;
+        if (next >= duration) {
+          return prev;
+        }
         const lyrics = currentTrack.lyrics;
         let idx = -1;
         for (let i = 0; i < lyrics.length; i++) {
@@ -34,7 +78,7 @@ export default function VinylPlayer() {
       });
     }, 500);
     return () => clearInterval(interval);
-  }, [playing, currentTrack]);
+  }, [playing, currentTrack, duration]);
 
   const selectTrack = (track: Track, e: React.MouseEvent) => {
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
@@ -50,17 +94,17 @@ export default function VinylPlayer() {
       proceduralRef.current = null;
     }
 
+    setDuration(parseDuration(track.duration));
     setCurrentTrack(track);
     setPlaying(true);
     setElapsed(0);
     setActiveLyricIndex(-1);
 
-    const chords = [261.63, 329.63, 392.0, 493.88, 349.23, 440.0, 523.25, 587.33];
     proceduralRef.current = startProceduralMelody(() => {
       const cx = window.innerWidth / 2;
       sparkle({ x: cx + (Math.random() * 80 - 40), y: window.innerHeight / 2, count: 1, kind: "rainbow" });
     });
-    playChime(chords[0], "sine", 1.5, 0.1);
+    playChime(523.25, "sine", 1.5, 0.1);
   };
 
   const stopPlayback = () => {
@@ -83,6 +127,35 @@ export default function VinylPlayer() {
     }
   };
 
+  const seek = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!currentTrack) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    const newTime = ratio * duration;
+    setElapsed(newTime);
+    setActiveLyricIndex(() => {
+      let idx = -1;
+      for (let i = 0; i < currentTrack.lyrics.length; i++) {
+        if (newTime >= currentTrack.lyrics[i].time) idx = i;
+        else break;
+      }
+      return idx;
+    });
+    playChime(440 + ratio * 400, "sine", 0.4, 0.08);
+  };
+
+  const toggleMute = () => {
+    setMuted((m) => !m);
+    if (!muted) {
+      setMasterVolume(0);
+    } else {
+      setMasterVolume(getMasterVolume() || volume);
+    }
+  };
+
+  const fmt = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
+  const progress = currentTrack ? Math.min(elapsed / duration, 1) : 0;
+
   return (
     <section className="relative px-4 py-32">
       <div className="mx-auto mb-16 max-w-3xl text-center">
@@ -101,7 +174,8 @@ export default function VinylPlayer() {
           </span>
         </h2>
         <p className="mx-auto mt-6 max-w-lg text-base text-stone-600">
-          Three tracks, three moods. Spin one and let the words find you.
+          Three tracks, three moods. Spin one, scrub the bar, shape the volume — let the words find
+          you.
         </p>
       </div>
 
@@ -120,7 +194,7 @@ export default function VinylPlayer() {
             />
             <motion.button
               onClick={handleVinylClick}
-              className="relative h-56 w-56 cursor-pointer rounded-full"
+              className="relative h-56 w-56 cursor-pointer rounded-full focus-ring-visible"
               aria-label={playing ? "Pause" : "Play"}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
@@ -156,7 +230,50 @@ export default function VinylPlayer() {
             </motion.div>
           </div>
 
-          <div className="mt-8 flex items-center gap-3">
+          <div className="mt-6 w-full">
+            <Waveform active={playing} progress={progress} />
+          </div>
+
+          <div className="mt-5 flex w-full items-center gap-3">
+            <button
+              onClick={toggleMute}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/70 text-stone-600 transition-colors hover:bg-amber-50 hover:text-amber-700 focus-ring-visible"
+              aria-label={muted ? "Unmute" : "Mute"}
+            >
+              {muted || volume === 0 ? (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M11 5L6 9H2v6h4l5 4V5z" />
+                  <line x1="23" y1="9" x2="17" y2="15" />
+                  <line x1="17" y1="9" x2="23" y2="15" />
+                </svg>
+              ) : (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M11 5L6 9H2v6h4l5 4V5z" />
+                  <path d="M15.54 8.46a5 5 0 010 7.07" />
+                  <path d="M19.07 4.93a10 10 0 010 14.14" />
+                </svg>
+              )}
+            </button>
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.01}
+              value={muted ? 0 : volume}
+              onChange={(e) => {
+                const v = parseFloat(e.target.value);
+                setVolume(v);
+                if (v > 0) setMuted(false);
+              }}
+              className="heena-range flex-1"
+              aria-label="Volume"
+            />
+            <span className="w-10 text-right font-mono-elegant text-[0.6rem] text-stone-500">
+              {Math.round((muted ? 0 : volume) * 100)}
+            </span>
+          </div>
+
+          <div className="mt-4 flex items-center gap-3">
             <div className="flex h-6 items-end gap-1">
               {[0, 1, 2, 3].map((i) => (
                 <div
@@ -198,7 +315,7 @@ export default function VinylPlayer() {
                 <motion.button
                   key={track.name}
                   onClick={(e) => selectTrack(track, e)}
-                  className={`group flex w-full items-center justify-between rounded-2xl border p-4 text-left transition-all interactive-scale ${
+                  className={`group flex w-full items-center justify-between rounded-2xl border p-4 text-left transition-all interactive-scale focus-ring-visible ${
                     isActive
                       ? "border-amber-300 bg-amber-50/80 shadow-md"
                       : "border-white/70 bg-white/60 hover:border-amber-200 hover:bg-white/90 hover:shadow-md"
@@ -265,17 +382,31 @@ export default function VinylPlayer() {
           </AnimatePresence>
 
           {currentTrack && playing && (
-            <div className="flex items-center gap-3 px-2">
-              <div className="h-1 flex-1 overflow-hidden rounded-full bg-stone-200">
+            <div className="px-2">
+              <div className="mb-1.5 flex items-center justify-between font-mono-elegant text-[0.6rem] text-stone-500">
+                <span>{fmt(elapsed)}</span>
+                <span className="opacity-60">click bar to seek</span>
+                <span>{fmt(duration)}</span>
+              </div>
+              <div
+                onClick={seek}
+                className="group relative h-2 cursor-pointer rounded-full bg-stone-200 focus-ring-visible"
+                role="slider"
+                aria-label="Seek"
+                aria-valuenow={Math.round(progress * 100)}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                tabIndex={0}
+              >
                 <motion.div
-                  className="h-full bg-gradient-to-r from-amber-500 to-rose-500"
-                  animate={{ width: `${Math.min((elapsed / 32) * 100, 100)}%` }}
-                  transition={{ ease: "linear" }}
+                  className="h-full rounded-full bg-gradient-to-r from-amber-500 to-rose-500"
+                  style={{ width: `${progress * 100}%` }}
+                />
+                <div
+                  className="absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-amber-500 bg-white shadow-md transition-transform group-hover:scale-110"
+                  style={{ left: `${progress * 100}%` }}
                 />
               </div>
-              <span className="font-mono-elegant text-[0.65rem] text-stone-500">
-                {Math.floor(elapsed / 60)}:{String(Math.floor(elapsed % 60)).padStart(2, "0")}
-              </span>
             </div>
           )}
         </motion.div>

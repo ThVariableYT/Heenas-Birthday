@@ -119,3 +119,50 @@ The site is a single-route (`/`) long-scroll experience composed of:
   4. Cake: a small confetti rain (full-screen) when the wish is sealed, beyond the centered sparkle burst.
   5. Accessibility: full keyboard navigation pass + visible focus rings on all interactive cards.
   6. Performance: lazy-mount heavy sections (Timeline, Vinyl) with `next/dynamic` to reduce initial JS.
+
+---
+
+## Round 3 — Scheduled webDevReview (cron #215324)
+
+**Task ID**: 3
+**Agent**: main (webDevReview)
+**Task**: Assess status via agent-browser QA, then add more styling details + more features, fix a11y/perf gaps from R2.
+
+### Work Log
+- Read prior worklog; confirmed project stable across R1 + R2.
+- QA via agent-browser: intro → enter → all sections render; no runtime errors.
+- **Fixed a11y gap (R2 leftover)**: added a global `@media (prefers-reduced-motion: reduce)` block in `globals.css` that neutralizes all infinite CSS animations (liquid blobs, ambient glow, float, shimmer, spin, gradient-pan, flame, vial bubbles, music bars, vinyl glow) and shortens transitions to ~0ms.
+- **Added ConfettiRain** (`ConfettiRain.tsx`) — full-screen confetti overlay (120 pieces: stars/circles/rects in 7 colors) triggered via a `heena:confetti` window event; respects reduced-motion. Wired into CakeSection so sealing a wish fires `fireConfetti(140)` alongside the existing sparkle burst.
+- **Added new ComplimentsSection** (`ComplimentsSection.tsx` + `compliments` data) — 12 floating glass compliment chips in a garden box that bob gently; tap to "pluck" one → it lifts and drifts off-screen with a rainbow sparkle + chime; plucked compliments collect into a gradient-pill tray with a live count; an empty-state offers "Grow them back" to refill. A floating quote card shows the last-plucked compliment. Placed between LoveJar and VinylPlayer.
+- **Upgraded VinylPlayer** — added (1) an animated **Waveform** visualization (48 bars; filled portion animates with `bounce-bar`), (2) a **volume slider** with mute toggle + live percentage, wired to a new `setMasterVolume`/`getMasterVolume` in `lib/audio.ts`, (3) a **clickable seek/scrub bar** with elapsed/total time and a draggable-looking thumb that jumps playback + re-syncs lyrics. Fixed a React-19 lint error by converting `durationRef` to `duration` state. Fixed a console warning by switching the waveform from `animation` shorthand to longhand properties (`animationName`, `animationDuration`, …).
+- **Upgraded MemoryDeck** — added a per-card **favorite (heart) toggle** on each card front; favorited cards animate the heart fill and are stably sorted to the top of the deck; a "♥ N favorites pinned to the top" counter appears when any are favorited. Rose sparkle + chime on favorite.
+- **Accessibility pass** — memory cards are now keyboard-focusable (`tabIndex=0`, `role="button"`, descriptive `aria-label`); Enter/Space flips, Escape closes a flipped card; added a `.focus-ring-visible` utility (amber outline + offset) applied to cards, track buttons, compliment chips, vinyl, seek bar, and favorite button.
+- **Performance** — lazy-mounted `TimelineSection` and `VinylPlayer` via `next/dynamic` (code-split out of the initial bundle).
+- **Styling polish** — Hero now has 6 floating decorative glyphs (✦❋✺❖✸) with a `glyph-bob` animation + 3 pulsing colored dots, and the "Heena" title gained a `text-shadow-glow`. Added a `.section-divider-glyph` utility and `confetti-fall` / `float-up-drift` / `focus-ring-pulse` keyframes. Added `.heena-range` custom slider styling (amber→rose track, white thumb with amber ring) for the volume control.
+- Lint: resolved `react-hooks/refs` errors (ref→state for `duration`) → `bun run lint` clean.
+
+### Stage Summary / Verification Results
+- `bun run lint` → clean (0 errors, 0 warnings).
+- Dev server compiles cleanly, `GET / 200`.
+- agent-browser desktop QA confirmed:
+  - Hero renders with floating glyphs + glowing title.
+  - ComplimentsSection: 12 chips float; plucking 2 → "PLUCKED · 2" tray with 2 gradient pills; floating quote card shows last plucked.
+  - MemoryDeck: heart toggle on a card → "1 FAVORITE PINNED TO THE TOP" appears; card reorders to top.
+  - VinylPlayer: waveform bars animate; volume slider shows "35" with mute icon; seek bar shows elapsed/total (0:00 / 3:42).
+  - CakeSection: blowing all candles → confetti rain (120 colorful shapes) falls across the screen alongside the sparkle burst.
+  - Keyboard: memory cards focusable, Enter flips, Escape closes.
+  - Console: only the harmless framer-motion scroll-offset dev warning remains (style-property warnings eliminated).
+- VLM (glm-4.6v) reviews: hero "whimsical, dynamic feel, drifting festive mood"; compliments "rounded pill-like notes, kind phrases"; vinyl "gray and orange audio waveform bars, volume slider with 35%, Golden Hour playing"; confetti "small colorful shapes raining gently"; mobile "all sections properly rendered without overflow".
+- Mobile 390×844: all sections (incl. Compliments garden + vinyl controls) fit without overflow.
+
+### Unresolved Issues or Risks, and Priority Recommendations for the Next Phase
+- **Harmless dev warning**: framer-motion `useScroll` container-position warning persists in dev (sections are `relative`). Non-blocking; cosmetic only.
+- **Vinyl audio is still procedural** (Web Audio synth, no real audio files). Scrubbing seeks the mock clock, not a real buffer. Bundling real audio + `.lrc` remains a future enhancement.
+- **Compliments chips** use absolute positioning with percentage `left`/`top`; on very narrow viewports a chip could overlap the box edge. Currently fine at 390px; could be made fully responsive with a CSS-grid layout if needed.
+- **Recommended next-phase features**:
+  1. Vinyl: upload-audio + `.lrc` lyrics (real playback + true scrub).
+  2. Compliments: "share my bouquet" — export plucked compliments as a styled image/card.
+  3. Memory deck: persist favorites + revealed state to `localStorage` so a return visit remembers them.
+  4. Cake: a "your birthday in numbers" stats card (candles blown, wishes sealed, compliments plucked) as a finale summary.
+  5. Accessibility: a "skip to content" link + a high-contrast theme variant.
+  6. Performance: virtualize the lyrics list for very long tracks; prefetch dynamic chunks on hover.

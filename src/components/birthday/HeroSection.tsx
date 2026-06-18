@@ -5,6 +5,15 @@ import { useEffect, useRef } from "react";
 import { heroSubtitle } from "@/lib/birthday-data";
 import { sparkle } from "./SparkleCanvas";
 
+const FLOATING_GLYPHS = [
+  { glyph: "✦", top: "18%", left: "12%", size: "text-3xl", color: "text-amber-400/50", delay: 0 },
+  { glyph: "❋", top: "28%", left: "82%", size: "text-2xl", color: "text-rose-400/50", delay: 0.5 },
+  { glyph: "✺", top: "62%", left: "8%", size: "text-4xl", color: "text-violet-400/40", delay: 1 },
+  { glyph: "❖", top: "72%", left: "88%", size: "text-3xl", color: "text-emerald-400/40", delay: 1.5 },
+  { glyph: "✸", top: "40%", left: "90%", size: "text-xl", color: "text-amber-400/40", delay: 2 },
+  { glyph: "✦", top: "80%", left: "20%", size: "text-2xl", color: "text-rose-400/40", delay: 2.5 },
+];
+
 export default function HeroSection() {
   const ref = useRef<HTMLDivElement>(null);
 
@@ -43,6 +52,36 @@ export default function HeroSection() {
         transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
       />
 
+      {FLOATING_GLYPHS.map((g, i) => (
+        <motion.span
+          key={i}
+          className={`pointer-events-none absolute ${g.size} ${g.color} animate-glyph-bob`}
+          style={{ top: g.top, left: g.left, animationDelay: `${g.delay}s` }}
+          aria-hidden
+        >
+          {g.glyph}
+        </motion.span>
+      ))}
+
+      <motion.div
+        className="pointer-events-none absolute left-[15%] top-[25%] h-2 w-2 rounded-full bg-amber-400/60"
+        animate={{ y: [0, -20, 0], opacity: [0.3, 1, 0.3] }}
+        transition={{ duration: 4, repeat: Infinity, delay: 0.5 }}
+        aria-hidden
+      />
+      <motion.div
+        className="pointer-events-none absolute right-[18%] top-[55%] h-1.5 w-1.5 rounded-full bg-rose-400/60"
+        animate={{ y: [0, 15, 0], opacity: [0.3, 1, 0.3] }}
+        transition={{ duration: 5, repeat: Infinity, delay: 1.2 }}
+        aria-hidden
+      />
+      <motion.div
+        className="pointer-events-none absolute left-[80%] top-[35%] h-1 w-1 rounded-full bg-violet-400/60"
+        animate={{ y: [0, -12, 0], opacity: [0.3, 1, 0.3] }}
+        transition={{ duration: 3.5, repeat: Infinity, delay: 0.8 }}
+        aria-hidden
+      />
+
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -67,7 +106,7 @@ export default function HeroSection() {
         >
           <span className="relative inline-block">
             <span
-              className="bg-gradient-to-br from-amber-600 via-rose-500 to-amber-700 bg-clip-text text-transparent"
+              className="bg-gradient-to-br from-amber-600 via-rose-500 to-amber-700 bg-clip-text text-transparent text-shadow-glow"
               style={{ transform: "translate(var(--px), var(--py))" }}
             >
               Heena

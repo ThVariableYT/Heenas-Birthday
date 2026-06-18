@@ -198,6 +198,21 @@ export const timelineMoments: TimelineMoment[] = [
 
 export const heroSubtitle = "A birthday composed in light, sound, and memory — for someone who makes ordinary days feel like kept promises.";
 
+export const compliments: string[] = [
+  "You make rooms feel warmer just by being in them.",
+  "Your laugh is the best kind of contagious.",
+  "You notice people the way most people never do.",
+  "You turn ordinary days into small adventures.",
+  "Your kindness is not a strategy — it's just you.",
+  "You make hard things look gentle.",
+  "You have a way of making people feel braver.",
+  "Your curiosity keeps the world interesting.",
+  "You are the calm in a lot of loud rooms.",
+  "You give without keeping a record.",
+  "Your warmth is the kind that lingers.",
+  "You are far stronger than you let on.",
+];
+
 export const introLines = [
   "> initializing celebration.protocol",
   "> loading memory.deck ............ ok",
