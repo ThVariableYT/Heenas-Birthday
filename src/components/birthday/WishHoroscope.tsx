@@ -29,9 +29,19 @@ const ACCENT_GLYPH: Record<HoroscopeReading["accent"], string> = {
 
 /**
  * Generate a horoscope reading based on the words in a sealed wish.
- * Picks all matching keyword readings first; if none, samples from the fallback set.
+ * Picks all matching keyword readings first; if none, samples from the fallback set
+ * using sentiment-based heuristics (wish length, punctuation, tone) so the
+ * fallback feels less random and more resonant.
+ *
+ * Heuristics:
+ *  - very short wish (<20 chars)  → "second wind" (punchy, hopeful)
+ *  - long wish (>90 chars)        → "becoming" (reflective, expansive)
+ *  - punctuation-rich (? or !)    → "kind mirror" (inquisitive / excited)
+ *  - wish mentions future tense   → "small brave steps"
+ *  - otherwise                    → cycle through all fallbacks by rollSeed
+ *
  * Returns a stable selection for a given wish + rollSeed (so re-rolling produces
- * a different draw).
+ * a different draw from the same sentiment bucket).
  */
 function generateReading(wish: string, rollSeed: number): HoroscopeReading {
   const text = wish.toLowerCase();
@@ -42,7 +52,38 @@ function generateReading(wish: string, rollSeed: number): HoroscopeReading {
   if (matched.length > 0) {
     return matched[rollSeed % matched.length];
   }
-  return horoscopeFallback[rollSeed % horoscopeFallback.length];
+
+  // Sentiment-based fallback bucket selection
+  const byTitle = (title: string) => horoscopeFallback.find((r) => r.title.startsWith(title));
+  const bucket: HoroscopeReading[] = [];
+
+  const len = wish.trim().length;
+  const punct = (wish.match(/[?!]/g) || []).length;
+  const futureWords = ["will", "going to", "want to", "hope", "wish", "dream", "plan", "one day", "someday"];
+  const mentionsFuture = futureWords.some((w) => text.includes(w));
+
+  if (len < 20) {
+    const r = byTitle("A Year of the Second Wind");
+    if (r) bucket.push(r);
+  } else if (len > 90) {
+    const r = byTitle("A Year That Asks Who You Are Becoming");
+    if (r) bucket.push(r);
+  }
+  if (punct >= 1) {
+    const r = byTitle("A Year of the Kind Mirror");
+    if (r) bucket.push(r);
+  }
+  if (mentionsFuture) {
+    const r = byTitle("A Year of Small, Brave Steps");
+    if (r) bucket.push(r);
+  }
+  // Always include the full fallback set as a base so re-rolling cycles through more
+  if (bucket.length === 0) {
+    return horoscopeFallback[rollSeed % horoscopeFallback.length];
+  }
+  // Interleave: prefer the sentiment bucket, but mix in others as the seed rolls
+  const full = [...bucket, ...horoscopeFallback.filter((r) => !bucket.includes(r))];
+  return full[rollSeed % full.length];
 }
 
 /**

@@ -6,6 +6,7 @@ import { compliments } from "@/lib/birthday-data";
 import { sparkle } from "./SparkleCanvas";
 import { playChime } from "@/lib/audio";
 import { useStatsStore } from "@/lib/stats-store";
+import SectionHeader from "./SectionHeader";
 
 type Chip = {
   id: number;
@@ -89,25 +90,21 @@ export default function ComplimentsSection() {
 
   return (
     <section className="relative px-4 py-32">
-      <div className="mx-auto mb-12 max-w-3xl text-center">
-        <div className="mb-4 flex items-center justify-center gap-3">
-          <div className="h-px w-10 bg-amber-400/40" />
-          <span className="font-mono-elegant text-[0.65rem] uppercase tracking-[0.4em] text-amber-700/70">
-            the compliments garden
-          </span>
-          <div className="h-px w-10 bg-amber-400/40" />
-        </div>
-        <h2 className="font-serif-elegant text-4xl font-bold text-stone-800 sm:text-5xl">
-          Pluck a few
-          <span className="bg-gradient-to-r from-rose-500 to-amber-600 bg-clip-text text-transparent">
-            {" "}
-            true things
-          </span>
-        </h2>
-        <p className="mx-auto mt-6 max-w-lg text-base text-stone-600">
-          Each floating note is something real. Tap one to lift it into the air and let it drift.
-        </p>
-      </div>
+      <SectionHeader
+        number="04"
+        eyebrow="the compliments garden"
+        accent="violet"
+        title={
+          <>
+            Pluck a few
+            <span className="bg-gradient-to-r from-rose-500 to-amber-600 bg-clip-text text-transparent">
+              {" "}
+              true things
+            </span>
+          </>
+        }
+        subtitle="Each floating note is something real. Tap one to lift it into the air and let it drift."
+      />
 
       <div className="relative mx-auto h-[360px] max-w-4xl overflow-hidden rounded-[2rem] border border-white/60 bg-gradient-to-br from-amber-50/60 via-rose-50/40 to-violet-50/60 sm:h-[420px]">
         <div

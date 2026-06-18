@@ -1132,3 +1132,108 @@ kbd {
   background: rgba(180, 83, 9, 0.4);
 }
 
+/* Aurora banner — soft animated gradient wash behind section headings */
+.aurora-banner {
+  filter: blur(28px);
+  opacity: 0.85;
+  animation: aurora-drift 14s ease-in-out infinite alternate;
+  border-radius: 50%;
+}
+@keyframes aurora-drift {
+  0% { transform: translateX(-12px) scale(1); opacity: 0.7; }
+  50% { transform: translateX(8px) scale(1.06); opacity: 0.9; }
+  100% { transform: translateX(-4px) scale(0.98); opacity: 0.75; }
+}
+.dark .aurora-banner { opacity: 0.55; }
+
+/* Vinyl groove pulse rings — expanding concentric rings around the vinyl record */
+@keyframes vinyl-groove-pulse {
+  0% { transform: scale(0.92); opacity: 0.55; }
+  100% { transform: scale(1.35); opacity: 0; }
+}
+.vinyl-groove-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(251, 191, 36, 0.4);
+  animation: vinyl-groove-pulse 3.2s ease-out infinite;
+  pointer-events: none;
+}
+
+/* Stat card 3D tilt — perspective wrapper + inner tilt surface */
+.stat-tilt-perspective {
+  perspective: 800px;
+}
+.stat-tilt-surface {
+  transform-style: preserve-3d;
+  transition: transform 0.18s ease-out;
+}
+
+/* Art-deco corner bracket — ornamental border accents for premium cards */
+.art-deco-corners {
+  position: relative;
+}
+.art-deco-corners::before,
+.art-deco-corners::after {
+  content: "";
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border: 1.5px solid rgba(180, 83, 9, 0.45);
+  pointer-events: none;
+}
+.art-deco-corners::before {
+  top: 10px;
+  left: 10px;
+  border-right: none;
+  border-bottom: none;
+}
+.art-deco-corners::after {
+  bottom: 10px;
+  right: 10px;
+  border-left: none;
+  border-top: none;
+}
+.art-deco-corners-full {
+  position: relative;
+}
+.art-deco-corners-full > .corner-bracket {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border: 1.5px solid rgba(180, 83, 9, 0.4);
+  pointer-events: none;
+}
+.art-deco-corners-full > .corner-bracket.tl { top: 10px; left: 10px; border-right: none; border-bottom: none; }
+.art-deco-corners-full > .corner-bracket.tr { top: 10px; right: 10px; border-left: none; border-bottom: none; }
+.art-deco-corners-full > .corner-bracket.bl { bottom: 10px; left: 10px; border-right: none; border-top: none; }
+.art-deco-corners-full > .corner-bracket.br { bottom: 10px; right: 10px; border-left: none; border-top: none; }
+
+/* Premium page scrollbar — ornate amber-rose gradient */
+::-webkit-scrollbar { width: 12px; }
+::-webkit-scrollbar-track {
+  background: linear-gradient(180deg, rgba(255, 247, 237, 0.6), rgba(254, 243, 199, 0.4));
+}
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(251, 191, 36, 0.5), rgba(244, 63, 94, 0.5));
+  border-radius: 6px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(251, 191, 36, 0.7), rgba(244, 63, 94, 0.7));
+  background-clip: padding-box;
+}
+.dark ::-webkit-scrollbar-track {
+  background: linear-gradient(180deg, rgba(28, 25, 23, 0.6), rgba(41, 37, 36, 0.4));
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(251, 191, 36, 0.4), rgba(244, 63, 94, 0.4));
+  background-clip: padding-box;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aurora-banner { animation: none; }
+  .vinyl-groove-ring { animation: none; opacity: 0.25; }
+}
+

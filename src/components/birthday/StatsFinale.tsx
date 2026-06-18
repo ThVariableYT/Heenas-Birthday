@@ -5,6 +5,8 @@ import { useEffect, useRef, useState } from "react";
 import { useStatsStore } from "@/lib/stats-store";
 import { sparkle } from "./SparkleCanvas";
 import { playChime } from "@/lib/audio";
+import StatsExportCard from "./StatsExportCard";
+import SectionHeader from "./SectionHeader";
 
 type StatItem = {
   key: keyof ReturnType<typeof useStatsStore.getState>["stats"];
@@ -69,6 +71,74 @@ function AnimatedNumber({ value }: { value: number }) {
   );
 }
 
+/**
+ * StatCard — glass stat tile with a pointer-driven 3D tilt.
+ * The tilt follows the cursor across the card and recenters on leave.
+ */
+function StatCard({ item, value, index }: { item: StatItem; value: number; index: number }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [tilt, setTilt] = useState({ rx: 0, ry: 0 });
+
+  const handleMove = (e: React.PointerEvent) => {
+    const el = ref.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width - 0.5;
+    const y = (e.clientY - rect.top) / rect.height - 0.5;
+    setTilt({ rx: -y * 12, ry: x * 14 });
+  };
+  const handleLeave = () => setTilt({ rx: 0, ry: 0 });
+
+  return (
+    <motion.div
+      className="stat-tilt-perspective"
+      initial={{ opacity: 0, y: 16 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.5, delay: index * 0.05 }}
+    >
+      <div
+        ref={ref}
+        onPointerMove={handleMove}
+        onPointerLeave={handleLeave}
+        className="stat-tilt-surface glass-card group relative overflow-hidden rounded-2xl p-5 text-center"
+        style={{ transform: `rotateX(${tilt.rx}deg) rotateY(${tilt.ry}deg)` }}
+      >
+        <div
+          className={`pointer-events-none absolute -right-4 -top-4 h-16 w-16 rounded-full bg-gradient-to-br ${item.accent} opacity-15 blur-2xl transition-opacity group-hover:opacity-30`}
+        />
+        {/* Edge sheen — appears on tilt */}
+        <div
+          className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+          style={{
+            background: `linear-gradient(${135 + tilt.ry * 2}deg, transparent 40%, rgba(255,255,255,0.18) 50%, transparent 60%)`,
+          }}
+        />
+        <div className="mb-1 text-lg text-amber-500/70" style={{ transform: "translateZ(20px)" }}>
+          {item.glyph}
+        </div>
+        <div
+          className="font-serif-elegant text-3xl font-bold text-stone-800 sm:text-4xl"
+          style={{ transform: "translateZ(30px)" }}
+        >
+          <span className={`bg-gradient-to-br ${item.accent} bg-clip-text text-transparent`}>
+            <AnimatedNumber value={value} />
+          </span>
+          {item.suffix && (
+            <span className="font-mono-elegant text-base text-stone-400">{item.suffix}</span>
+          )}
+        </div>
+        <div
+          className="mt-1 font-mono-elegant text-[0.55rem] uppercase tracking-[0.2em] text-stone-500"
+          style={{ transform: "translateZ(15px)" }}
+        >
+          {item.label}
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
 export default function StatsFinale() {
   const { stats, reset } = useStatsStore();
   const sectionRef = useRef<HTMLElement>(null);
@@ -106,32 +176,22 @@ export default function StatsFinale() {
   return (
     <section ref={sectionRef} className="relative px-4 py-28">
       <div className="mx-auto max-w-4xl">
-        <motion.div
-          className="mb-12 text-center"
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-80px" }}
-          transition={{ duration: 0.7 }}
-        >
-          <div className="mb-4 flex items-center justify-center gap-3">
-            <div className="h-px w-10 bg-amber-400/40" />
-            <span className="font-mono-elegant text-[0.65rem] uppercase tracking-[0.4em] text-amber-700/70">
-              your birthday, in numbers
-            </span>
-            <div className="h-px w-10 bg-amber-400/40" />
-          </div>
-          <h2 className="font-serif-elegant text-4xl font-bold text-stone-800 sm:text-5xl">
-            A little ledger of
-            <span className="bg-gradient-to-r from-amber-600 to-rose-500 bg-clip-text text-transparent">
-              {" "}
-              today
-            </span>
-          </h2>
-          <p className="mx-auto mt-5 max-w-md text-sm leading-relaxed text-stone-600">
-            Every tap, every reveal, every kept thought — quietly counted. A small souvenir of the
-            time you spent here.
-          </p>
-        </motion.div>
+        <SectionHeader
+          number="07"
+          eyebrow="your birthday, in numbers"
+          accent="violet"
+          subtitleMaxWidth="max-w-md"
+          title={
+            <>
+              A little ledger of
+              <span className="bg-gradient-to-r from-amber-600 to-rose-500 bg-clip-text text-transparent">
+                {" "}
+                today
+              </span>
+            </>
+          }
+          subtitle="Every tap, every reveal, every kept thought — quietly counted. A small souvenir of the time you spent here."
+        />
 
         <motion.div
           className="grid grid-cols-2 gap-3 sm:grid-cols-4"
@@ -143,31 +203,7 @@ export default function StatsFinale() {
           {STAT_ITEMS.map((item, i) => {
             const value = stats[item.key] as number;
             return (
-              <motion.div
-                key={item.key}
-                className="glass-card group relative overflow-hidden rounded-2xl p-5 text-center"
-                initial={{ opacity: 0, y: 16 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: i * 0.05 }}
-                whileHover={{ y: -4, scale: 1.02 }}
-              >
-                <div
-                  className={`pointer-events-none absolute -right-4 -top-4 h-16 w-16 rounded-full bg-gradient-to-br ${item.accent} opacity-15 blur-2xl transition-opacity group-hover:opacity-30`}
-                />
-                <div className="mb-1 text-lg text-amber-500/70">{item.glyph}</div>
-                <div className="font-serif-elegant text-3xl font-bold text-stone-800 sm:text-4xl">
-                  <span className={`bg-gradient-to-br ${item.accent} bg-clip-text text-transparent`}>
-                    <AnimatedNumber value={value} />
-                  </span>
-                  {item.suffix && (
-                    <span className="font-mono-elegant text-base text-stone-400">{item.suffix}</span>
-                  )}
-                </div>
-                <div className="mt-1 font-mono-elegant text-[0.55rem] uppercase tracking-[0.2em] text-stone-500">
-                  {item.label}
-                </div>
-              </motion.div>
+              <StatCard key={item.key} item={item} value={value} index={i} />
             );
           })}
         </motion.div>
@@ -192,6 +228,8 @@ export default function StatsFinale() {
             </span>
             <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/40 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
           </motion.button>
+
+          <StatsExportCard />
 
           <button
             onClick={() => setShowReset((v) => !v)}

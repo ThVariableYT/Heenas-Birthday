@@ -8,6 +8,7 @@ import { playChime } from "@/lib/audio";
 import { wishMessages } from "@/lib/birthday-data";
 import { useStatsStore } from "@/lib/stats-store";
 import WishHoroscope from "./WishHoroscope";
+import SectionHeader from "./SectionHeader";
 
 type Candle = { id: number; lit: boolean };
 type SealedWish = { text: string; at: number };
@@ -134,26 +135,21 @@ export default function CakeSection() {
       className="relative px-4 py-32"
       onPointerMove={handleSectionMove}
     >
-      <div className="mx-auto mb-16 max-w-3xl text-center">
-        <div className="mb-4 flex items-center justify-center gap-3">
-          <div className="h-px w-10 bg-amber-400/40" />
-          <span className="font-mono-elegant text-[0.65rem] uppercase tracking-[0.4em] text-amber-700/70">
-            the cake
-          </span>
-          <div className="h-px w-10 bg-amber-400/40" />
-        </div>
-        <h2 className="font-serif-elegant text-4xl font-bold text-stone-800 sm:text-5xl">
-          Make a wish,
-          <span className="bg-gradient-to-r from-amber-600 to-rose-500 bg-clip-text text-transparent">
-            {" "}
-            then blow
-          </span>
-        </h2>
-        <p className="mx-auto mt-6 max-w-lg text-base text-stone-600">
-          Three candles. Hover close to each flame, or tap to blow it out. When the last one goes,
-          your wish is sealed.
-        </p>
-      </div>
+      <SectionHeader
+        number="06"
+        eyebrow="the cake"
+        accent="amber"
+        title={
+          <>
+            Make a wish,
+            <span className="bg-gradient-to-r from-amber-600 to-rose-500 bg-clip-text text-transparent">
+              {" "}
+              then blow
+            </span>
+          </>
+        }
+        subtitle="Three candles. Hover close to each flame, or tap to blow it out. When the last one goes, your wish is sealed."
+      />
 
       <div className="relative mx-auto flex max-w-2xl flex-col items-center">
         <motion.div

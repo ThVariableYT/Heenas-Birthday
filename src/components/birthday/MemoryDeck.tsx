@@ -6,6 +6,7 @@ import { memoryCards, type MemoryCard } from "@/lib/birthday-data";
 import { sparkle } from "./SparkleCanvas";
 import { playChime } from "@/lib/audio";
 import { useStatsStore } from "@/lib/stats-store";
+import SectionHeader from "./SectionHeader";
 
 const FAV_KEY = "heena:memory-favorites";
 const REVEALED_KEY = "heena:memory-revealed";
@@ -326,6 +327,35 @@ export default function MemoryDeck() {
   // Reading-mode overlay state — focused full-screen memory card viewer
   const [readingIndex, setReadingIndex] = useState<number | null>(null);
 
+  // Touch swipe state for reading mode navigation
+  const touchStartRef = useRef<{ x: number; y: number; t: number } | null>(null);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    const t = e.touches[0];
+    touchStartRef.current = { x: t.clientX, y: t.clientY, t: Date.now() };
+  }, []);
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    const start = touchStartRef.current;
+    if (!start) return;
+    touchStartRef.current = null;
+    const end = e.changedTouches[0];
+    const dx = end.clientX - start.x;
+    const dy = end.clientY - start.y;
+    const dt = Date.now() - start.t;
+    // Only treat as swipe if horizontal-dominant, fast enough, and traveled >50px
+    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.4 || dt > 800) return;
+    if (dx < 0) {
+      // swipe left → next
+      setReadingIndex((i) => (i === null ? i : (i + 1) % memoryCards.length));
+      playChime(440 + Math.random() * 60, "sine", 0.4, 0.08);
+    } else {
+      // swipe right → prev
+      setReadingIndex((i) => (i === null ? i : (i - 1 + memoryCards.length) % memoryCards.length));
+      playChime(330 + Math.random() * 60, "sine", 0.4, 0.08);
+    }
+  }, [setReadingIndex]);
+
   // Reading mode keyboard navigation — ArrowLeft / ArrowRight / Escape
   useEffect(() => {
     if (readingIndex === null) return;
@@ -393,25 +423,22 @@ export default function MemoryDeck() {
 
   return (
     <section ref={sectionRef} className="relative px-4 py-32">
-      <motion.div className="mx-auto mb-12 max-w-3xl text-center" style={{ y: headingY }}>
-        <div className="mb-4 flex items-center justify-center gap-3">
-          <div className="h-px w-10 bg-amber-400/40" />
-          <span className="font-mono-elegant text-[0.65rem] uppercase tracking-[0.4em] text-amber-700/70">
-            the memory deck
-          </span>
-          <div className="h-px w-10 bg-amber-400/40" />
-        </div>
-        <h2 className="font-serif-elegant text-4xl font-bold text-stone-800 sm:text-5xl md:text-6xl">
-          Six chapters,
-          <br />
-          <span className="bg-gradient-to-r from-rose-500 to-amber-600 bg-clip-text text-transparent">
-            kept like cards
-          </span>
-        </h2>
-        <p className="mx-auto mt-6 max-w-lg text-base leading-relaxed text-stone-600">
-          Each card holds a moment. Tilt it, turn it over — let it tell you the part of the story
-          it kept.
-        </p>
+      <motion.div style={{ y: headingY }}>
+        <SectionHeader
+          number="02"
+          eyebrow="the memory deck"
+          accent="rose"
+          title={
+            <>
+              Six chapters,
+              <br />
+              <span className="bg-gradient-to-r from-rose-500 to-amber-600 bg-clip-text text-transparent">
+                kept like cards
+              </span>
+            </>
+          }
+          subtitle="Each card holds a moment. Tilt it, turn it over — let it tell you the part of the story it kept."
+        />
       </motion.div>
 
       <div className="mx-auto mb-16 flex max-w-2xl flex-col items-center gap-4">
@@ -543,6 +570,8 @@ export default function MemoryDeck() {
               exit={{ scale: 0.95, y: 12, opacity: 0 }}
               transition={{ type: "spring", stiffness: 240, damping: 26 }}
               onClick={(e) => e.stopPropagation()}
+              onTouchStart={handleTouchStart}
+              onTouchEnd={handleTouchEnd}
             >
               {/* Corner flourishes */}
               <span className="corner-flourish corner-flourish-tl" aria-hidden />
@@ -627,7 +656,7 @@ export default function MemoryDeck() {
                 </button>
               </div>
               <p className="mt-3 text-center font-mono-elegant text-[0.55rem] uppercase tracking-[0.25em] text-amber-400/40">
-                ← → to navigate · Esc to close
+                ← → or swipe to navigate · Esc to close
               </p>
             </motion.div>
           </motion.div>

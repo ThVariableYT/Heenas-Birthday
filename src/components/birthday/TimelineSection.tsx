@@ -5,6 +5,7 @@ import { useRef } from "react";
 import { timelineMoments, type TimelineMoment } from "@/lib/birthday-data";
 import { sparkle } from "./SparkleCanvas";
 import { playChime } from "@/lib/audio";
+import SectionHeader from "./SectionHeader";
 
 const ACCENTS: Record<TimelineMoment["accent"], { dot: string; ring: string; text: string; glow: string }> = {
   amber: {
@@ -117,25 +118,22 @@ export default function TimelineSection() {
 
   return (
     <section ref={containerRef} className="relative px-4 py-32">
-      <div className="mx-auto mb-20 max-w-3xl text-center">
-        <div className="mb-4 flex items-center justify-center gap-3">
-          <div className="h-px w-10 bg-amber-400/40" />
-          <span className="font-mono-elegant text-[0.65rem] uppercase tracking-[0.4em] text-amber-700/70">
-            the timeline
-          </span>
-          <div className="h-px w-10 bg-amber-400/40" />
-        </div>
-        <h2 className="font-serif-elegant text-4xl font-bold text-stone-800 sm:text-5xl">
-          A few moments,
-          <span className="bg-gradient-to-r from-amber-600 to-rose-500 bg-clip-text text-transparent">
-            {" "}
-            in order
-          </span>
-        </h2>
-        <p className="mx-auto mt-6 max-w-lg text-base text-stone-600">
-          Not a complete history — just the beats that kept coming back. Scroll through; each one
-          still hums.
-        </p>
+      <div className="mb-20">
+        <SectionHeader
+          number="01"
+          eyebrow="the timeline"
+          accent="amber"
+          title={
+            <>
+              A few moments,
+              <span className="bg-gradient-to-r from-amber-600 to-rose-500 bg-clip-text text-transparent">
+                {" "}
+                in order
+              </span>
+            </>
+          }
+          subtitle="Not a complete history — just the beats that kept coming back. Scroll through; each one still hums."
+        />
       </div>
 
       <div className="relative mx-auto max-w-4xl">

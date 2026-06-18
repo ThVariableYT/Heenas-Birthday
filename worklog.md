@@ -323,3 +323,76 @@ Unresolved Issues or Risks, and Priority Recommendations for the Next Phase
   5. **Accessibility**: add a high-contrast theme variant; add screen-reader announcements for stat increments and reading-mode navigation.
   6. **Performance**: virtualize the wish album if it grows beyond 12 entries; prefetch the VinylPlayer dynamic chunk on hover.
   7. **Wish horoscope: sentiment-based fallback** — if no keyword matches, sample from fallbacks based on the wish length / sentiment (short wish → "second wind", long wish → "becoming").
+
+---
+
+## Round 5 — Scheduled webDevReview (cron #215324)
+
+**Task ID**: 5
+**Agent**: main (webDevReview)
+**Task**: Assess status via agent-browser QA, then add more styling details + more features per the mandatory requirements.
+
+### Work Log
+- Read prior worklog (R1–R4, 326 lines); confirmed project stable and fully functional across 4 prior rounds.
+- Pre-feature QA via agent-browser (desktop 1440×900): intro → enter → all 8 sections render; no console errors; no horizontal overflow (scrollW=1440=innerW); scrollH=11262. VLM review of all sections: polish 8–9/10, no visual bugs.
+- **No bugs to fix** — proceeded to feature/style additions per the mandatory requirements.
+
+#### New Features
+1. **Stats Export Card (PNG keepsake)** — `src/components/birthday/StatsExportCard.tsx` + integrated into `StatsFinale`. Generates a 1080×1350 PNG "birthday in numbers" keepsake entirely client-side via HTML5 Canvas (no external assets). The card has: aurora-wash gradient background, double-rule ornamental border with art-deco corner flourishes, gradient "For Heena" title, 2×4 stat grid with per-card glass panels + accent glows + gradient numbers + letter-spaced labels, footer divider + signature + date + monogram stamp. Two buttons: "download keepsake" (saves PNG via `<a download>`) and "share keepsake" (uses `navigator.share({files})` when available, falls back to download + clipboard URL). Toast notification "keepsake sealed — check your downloads" appears on download. Rainbow sparkle + high chime on success. Spinner state during canvas render.
+2. **Memory Deck touch swipe gestures** — Reading mode overlay now supports touch swipe left/right to navigate between memories (in addition to existing keyboard arrows + button controls). Swipe detection requires horizontal-dominant motion (>50px, <800ms, |dx| > |dy|×1.4) to avoid accidental triggers on vertical scrolls. Navigation hint updated to "← → or swipe to navigate · Esc to close".
+3. **Love Jar favorites + share kept thoughts** — Each kept-thought entry now has a ★/☆ favorite toggle button. Favorited thoughts get a rose-tinted background + ring, and a live "★ N" badge appears in the tray header. A "share" button in the tray header compiles favorites (or all kept if no favorites) into a formatted text list ("Kept thoughts for Heena ✦" + numbered list + "— gathered with love") and uses `navigator.share`/clipboard. Rainbow sparkle + chime on share; rose sparkle + chime on favorite. Glass toast "kept thoughts gathered — share them with someone you love" appears.
+4. **Wish Horoscope sentiment-based fallback** — When no keywords match the sealed wish, the fallback reading is now selected by sentiment heuristics rather than pure rotation: very short wish (<20 chars) → "second wind"; long wish (>90 chars) → "becoming"; punctuation-rich (? or !) → "kind mirror"; future-tense words ("will", "hope", "dream", "someday"…) → "small brave steps". The sentiment bucket is interleaved with the full fallback set so re-rolling still cycles through more readings.
+
+#### Styling Enhancements
+5. **SectionHeader component** — `src/components/birthday/SectionHeader.tsx`. A reusable, premium section banner with: a circular numbered art-deco badge (gradient fill + inner highlight + rotating dotted outer ring + flanking gradient rules), an eyebrow label with accent-colored divider lines, a large serif title (accepts React nodes for gradient spans), an optional subtitle, and an animated aurora-gradient wash behind the heading (radial blooms in the section's accent color, blurred + drift-animated). Five accent themes (amber/rose/violet/emerald/sky). Applied to all 6 main sections: Timeline (01), Memory Deck (02), Love Jar (03), Compliments (04), Vinyl Player (05), Cake (06), Stats Finale (07) — providing editorial progression and visual consistency.
+6. **Vinyl groove pulse rings** — Three expanding concentric amber rings around the vinyl record while playing (staggered 1.1s delays, 3.2s ease-out scale 0.92→1.35 + fade). Renders only when `playing` is true. Respects `prefers-reduced-motion`.
+7. **Stat card 3D tilt** — Each stat card in StatsFinale now has a pointer-driven 3D tilt (rotateX/rotateY following the cursor, ±12–14°) with `translateZ` depth on the glyph/value/label for a parallax effect, plus an edge-sheen that appears on tilt. Replaces the previous flat `whileHover` scale.
+8. **Aurora banner utility** — `.aurora-banner` CSS class with `aurora-drift` keyframe (14s ease-in-out alternate, translateX + scale + opacity oscillation), `filter: blur(28px)`, dark-mode opacity reduction.
+9. **Premium page scrollbar** — Replaced the default scrollbar with an ornate amber→rose gradient thumb on a cream gradient track (12px wide, rounded, padding-clip). Dark-mode variant included.
+10. **Art-deco corner brackets** — `.art-deco-corners` and `.art-deco-corners-full` (with `.corner-bracket.tl/tr/bl/br` children) utility classes for ornamental L-shaped border accents on premium cards.
+11. **Reduced-motion neutralization** extended to the new aurora-banner and vinyl-groove-ring animations.
+
+#### Lint / Build
+- One lint error during round: `MemoryDeck.tsx` `handleTouchEnd` useCallback had empty deps but used `setReadingIndex` → React Compiler flagged inferred-vs-source mismatch. Fixed by adding `setReadingIndex` to deps (it's a stable state setter). Final `bun run lint` → clean (0 errors, 0 warnings).
+
+### Stage Summary / Verification Results
+- `bun run lint` → clean (0 errors, 0 warnings).
+- Dev server compiles cleanly, `GET / 200`.
+- agent-browser desktop QA (1440×900) confirmed:
+  - All 6 SectionHeader instances render with numbered badges (01–07) + aurora wash + eyebrow + title. ✓
+  - Stats export card: "download keepsake" + "share keepsake" buttons render; clicking download fires canvas draw + triggers PNG download + shows toast (toast text confirmed in DOM). ✓
+  - Love jar: draw 3 thoughts → tray appears; favorite toggle (☆→★) works; ★ count badge appears; share button fires rainbow sparkle. ✓
+  - Memory reading mode: opens via expand button; ArrowRight navigates Chapter 01 → 02; Escape closes; hint text now "← → or swipe to navigate". ✓
+  - Vinyl: clicking play spins vinyl + 3 amber pulse rings expand outward; waveform animates; volume + seek controls present. ✓
+  - Stat cards: 3D tilt follows cursor with parallax depth; edge sheen appears on hover. ✓
+  - Dark mode: numbered badges + aurora wash + all new elements adapt cleanly; readability excellent. ✓
+  - No console errors throughout all interactions. ✓
+  - No horizontal overflow (scrollW=1440=innerW). ✓
+- agent-browser mobile QA (390×844) confirmed:
+  - No horizontal overflow (scrollW=390=innerW). ✓
+  - Numbered section badges visible. ✓
+  - Stat cards stack 2-column. ✓
+  - 0 console errors. ✓
+- VLM (glm-4.6v) reviews:
+  - Section headers (timeline, memory, jar): "Numbered badges visible and well-styled, distinct colors, clear numbering; no major visual bugs; polish 8/10".
+  - Stats section header: "circular '07' badge present, 'A little ledger of today' visible, aurora gradient wash behind heading".
+  - Dark mode: "Background dark ✓, numbered badges visible ✓, aurora gradient visible ✓, text readable ✓, polish 9/10".
+  - Mobile: "No horizontal overflow ✓, numbered badges visible ✓, stat cards 2-column ✓, polish 9/10".
+  - Reading mode: "Full-screen dark overlay with centered card ✓, corner flourishes ✓, large serif title ✓, prev/next buttons ✓, star field background ✓".
+  - Vinyl playing: "Vinyl record visible ✓, 3 amber expanding pulse rings ✓, waveform animating ✓, volume + seek controls visible ✓".
+  - Love jar with favorites: "Kept thoughts tray with 3 entries ✓, 1 entry has gold star ✓, share/clear buttons present ✓, no visual bugs".
+
+### Unresolved Issues or Risks, and Priority Recommendations for the Next Phase
+- **Harmless dev warning**: framer-motion `useScroll` container-position warning persists in dev (sections are `relative`). Non-blocking; cosmetic only.
+- **Vinyl audio is still procedural** (Web Audio synth, no real audio files). The PNG keepsake + lyrics copy + scrubbing all work, but real audio + `.lrc` upload remains a future enhancement.
+- **Clipboard API in headless test**: `navigator.clipboard.writeText` may fail in agent-browser (no clipboard permission); the toast may not appear in QA screenshots but the sparkle + chime feedback always fires. In a real browser with a user gesture, both succeed.
+- **Stats export PNG**: rendered procedurally via Canvas (no font embedding), so the keepsake uses browser-default serif/sans-serif fonts rather than the loaded Google Fonts. The visual style is still premium (gradient title, glass panels, ornamental border). A future enhancement could embed the Google Fonts in the canvas via `document.fonts.ready` + `FontFace.load`.
+- **Reading-mode + sparkle interaction**: When reading mode is open (z-[80]), sparkle bursts from the `S` shortcut fire behind the dialog (SparkleCanvas is at root). Minor cosmetic; not blocking.
+- **Recommended next-phase features** (in priority order):
+  1. **Vinyl: real audio + .lrc upload** — support user-uploaded audio files + .lrc lyrics for true scrub/sync, replacing the procedural melody. The "copy lyrics" feature would become even more meaningful.
+  2. **Memory deck: per-card glyph theme colors** — each memory card's chapter glyph could pick up a distinct accent gradient (currently all amber).
+  3. **Compliments garden: "grow a new compliment"** — let the user type their own compliment and watch it float up into the garden alongside the curated set.
+  4. **Cake: a "year ahead" companion card** that pairs with the WishHoroscope — a short list of "things to try this year" based on the wish keywords.
+  5. **Stats export: embed Google Fonts in canvas** so the keepsake uses the exact same Playfair Display + Plus Jakarta Sans typography as the site.
+  6. **Accessibility**: a high-contrast theme variant; screen-reader announcements for stat increments and reading-mode navigation.
+  7. **Performance**: prefetch the VinylPlayer dynamic chunk on hover; virtualize the wish album if it grows beyond 12 entries.

@@ -1,0 +1,1135 @@
+     1→@import "tailwindcss";
+     2→@import "tw-animate-css";
+     3→
+     4→@custom-variant dark (&:is(.dark *));
+     5→
+     6→@theme inline {
+     7→  --color-background: var(--background);
+     8→  --color-foreground: var(--foreground);
+     9→  --font-sans: var(--font-jakarta);
+    10→  --font-serif: var(--font-playfair);
+    11→  --font-mono: var(--font-fira);
+    12→  --color-sidebar-ring: var(--sidebar-ring);
+    13→  --color-sidebar-border: var(--sidebar-border);
+    14→  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    15→  --color-sidebar-accent: var(--sidebar-accent);
+    16→  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    17→  --color-sidebar-primary: var(--sidebar-primary);
+    18→  --color-sidebar-foreground: var(--sidebar-foreground);
+    19→  --color-sidebar: var(--sidebar);
+    20→  --color-chart-5: var(--chart-5);
+    21→  --color-chart-4: var(--chart-4);
+    22→  --color-chart-3: var(--chart-3);
+    23→  --color-chart-2: var(--chart-2);
+    24→  --color-chart-1: var(--chart-1);
+    25→  --color-ring: var(--ring);
+    26→  --color-input: var(--input);
+    27→  --color-border: var(--border);
+    28→  --color-destructive: var(--destructive);
+    29→  --color-accent-foreground: var(--accent-foreground);
+    30→  --color-accent: var(--accent);
+    31→  --color-muted-foreground: var(--muted-foreground);
+    32→  --color-muted: var(--muted);
+    33→  --color-secondary-foreground: var(--secondary-foreground);
+    34→  --color-secondary: var(--secondary);
+    35→  --color-primary-foreground: var(--primary-foreground);
+    36→  --color-primary: var(--primary);
+    37→  --color-popover-foreground: var(--popover-foreground);
+    38→  --color-popover: var(--popover);
+    39→  --color-card-foreground: var(--card-foreground);
+    40→  --color-card: var(--card);
+    41→  --radius-sm: calc(var(--radius) - 4px);
+    42→  --radius-md: calc(var(--radius) - 2px);
+    43→  --radius-lg: var(--radius);
+    44→  --radius-xl: calc(var(--radius) + 4px);
+    45→  --color-rose-glow: #f43f5e;
+    46→  --color-amber-glow: #fbbf24;
+    47→  --color-blush: #fff5f0;
+    48→  --color-lilac: #fae8ff;
+    49→}
+    50→
+    51→:root {
+    52→  --radius: 0.75rem;
+    53→  --background: #fdfbf7;
+    54→  --foreground: #292524;
+    55→  --card: #ffffff;
+    56→  --card-foreground: #292524;
+    57→  --popover: #ffffff;
+    58→  --popover-foreground: #292524;
+    59→  --primary: #b45309;
+    60→  --primary-foreground: #fffbeb;
+    61→  --secondary: #fef3c7;
+    62→  --secondary-foreground: #78350f;
+    63→  --muted: #f5f5f4;
+    64→  --muted-foreground: #78716c;
+    65→  --accent: #fce7f3;
+    66→  --accent-foreground: #831843;
+    67→  --destructive: #e11d48;
+    68→  --border: rgba(180, 83, 9, 0.12);
+    69→  --input: rgba(180, 83, 9, 0.12);
+    70→  --ring: #fbbf24;
+    71→  --chart-1: #f43f5e;
+    72→  --chart-2: #fbbf24;
+    73→  --chart-3: #a78bfa;
+    74→  --chart-4: #34d399;
+    75→  --chart-5: #38bdf8;
+    76→  --sidebar: #fdfbf7;
+    77→  --sidebar-foreground: #292524;
+    78→  --sidebar-primary: #b45309;
+    79→  --sidebar-primary-foreground: #fffbeb;
+    80→  --sidebar-accent: #fce7f3;
+    81→  --sidebar-accent-foreground: #831843;
+    82→  --sidebar-border: rgba(180, 83, 9, 0.12);
+    83→  --sidebar-ring: #fbbf24;
+    84→}
+    85→
+    86→.dark {
+    87→  --background: #0a0608;
+    88→  --foreground: #fafaf9;
+    89→  --card: #15101a;
+    90→  --card-foreground: #fafaf9;
+    91→  --popover: #15101a;
+    92→  --popover-foreground: #fafaf9;
+    93→  --primary: #fbbf24;
+    94→  --primary-foreground: #1c1003;
+    95→  --secondary: #2a1a1f;
+    96→  --secondary-foreground: #fef3c7;
+    97→  --muted: #1a1218;
+    98→  --muted-foreground: #a8a29e;
+    99→  --accent: #3b0a1f;
+   100→  --accent-foreground: #fce7f3;
+   101→  --destructive: #fb7185;
+   102→  --border: rgba(251, 191, 36, 0.14);
+   103→  --input: rgba(251, 191, 36, 0.14);
+   104→  --ring: #fbbf24;
+   105→}
+   106→
+   107→@layer base {
+   108→  * {
+   109→    @apply border-border outline-ring/50;
+   110→  }
+   111→  body {
+   112→    @apply bg-background text-foreground;
+   113→    font-family: var(--font-jakarta), system-ui, sans-serif;
+   114→    background:
+   115→      radial-gradient(at 0% 0%, #fff5f0 0px, transparent 50%),
+   116→      radial-gradient(at 100% 0%, #fae8ff 0px, transparent 50%),
+   117→      radial-gradient(at 50% 100%, #fffbeb 0px, transparent 50%),
+   118→      #fdfbf7;
+   119→    background-attachment: fixed;
+   120→    overflow-x: hidden;
+   121→    -webkit-tap-highlight-color: transparent;
+   122→  }
+   123→  .dark body {
+   124→    background:
+   125→      radial-gradient(at 0% 0%, rgba(244, 63, 94, 0.12) 0px, transparent 50%),
+   126→      radial-gradient(at 100% 0%, rgba(167, 139, 250, 0.12) 0px, transparent 50%),
+   127→      radial-gradient(at 50% 100%, rgba(251, 191, 36, 0.08) 0px, transparent 50%),
+   128→      #0a0608;
+   129→  }
+   130→  .font-serif-elegant {
+   131→    font-family: var(--font-playfair), Georgia, serif;
+   132→  }
+   133→  .font-mono-elegant {
+   134→    font-family: var(--font-fira), monospace;
+   135→  }
+   136→}
+   137→
+   138→::-webkit-scrollbar {
+   139→  width: 8px;
+   140→  height: 8px;
+   141→}
+   142→::-webkit-scrollbar-track {
+   143→  background: rgba(255, 245, 238, 0.4);
+   144→}
+   145→::-webkit-scrollbar-thumb {
+   146→  background: linear-gradient(180deg, rgba(251, 191, 36, 0.35), rgba(244, 63, 94, 0.35));
+   147→  border-radius: 9999px;
+   148→  transition: background 0.3s;
+   149→}
+   150→::-webkit-scrollbar-thumb:hover {
+   151→  background: linear-gradient(180deg, rgba(251, 191, 36, 0.6), rgba(244, 63, 94, 0.6));
+   152→}
+   153→
+   154→::selection {
+   155→  background: rgba(251, 191, 36, 0.3);
+   156→  color: #78350f;
+   157→}
+   158→
+   159→.dark ::selection {
+   160→  background: rgba(251, 191, 36, 0.4);
+   161→  color: #fef3c7;
+   162→}
+   163→
+   164→.dark .glass-premium {
+   165→  background: linear-gradient(135deg, rgba(30, 20, 35, 0.85), rgba(20, 14, 26, 0.7));
+   166→  border: 1px solid rgba(251, 191, 36, 0.12);
+   167→  box-shadow:
+   168→    inset 0 1px 3px rgba(255, 255, 255, 0.06),
+   169→    0 25px 50px -12px rgba(0, 0, 0, 0.5);
+   170→}
+   171→.dark .glass-card {
+   172→  background: rgba(30, 20, 35, 0.55);
+   173→  border: 1px solid rgba(251, 191, 36, 0.1);
+   174→}
+   175→.dark .text-stone-800 { color: #fafaf9; }
+   176→.dark .text-stone-700 { color: #e7e5e4; }
+   177→.dark .text-stone-600 { color: #d6d3d1; }
+   178→.dark .text-stone-500 { color: #a8a29e; }
+   179→.dark .text-stone-400 { color: #a8a29e; }
+   180→.dark .bg-white\/50 { background-color: rgba(30, 20, 35, 0.5); }
+   181→.dark .bg-white\/60 { background-color: rgba(30, 20, 35, 0.6); }
+   182→.dark .bg-white\/70 { background-color: rgba(30, 20, 35, 0.7); }
+   183→.dark .border-white\/70 { border-color: rgba(251, 191, 36, 0.15); }
+   184→.dark .border-white\/60 { border-color: rgba(251, 191, 36, 0.12); }
+   185→.dark .border-stone-200 { border-color: rgba(251, 191, 36, 0.15); }
+   186→.dark .bg-stone-200 { background-color: rgba(251, 191, 36, 0.15); }
+   187→.dark .bg-stone-100 { background-color: rgba(251, 191, 36, 0.1); }
+   188→.dark .editorial-line::after { background: #0a0608; }
+   189→
+   190→@layer utilities {
+   191→  .glass-premium {
+   192→    background: linear-gradient(135deg, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.6));
+   193→    backdrop-filter: blur(30px);
+   194→    -webkit-backdrop-filter: blur(30px);
+   195→    border: 1px solid rgba(255, 255, 255, 0.8);
+   196→    box-shadow:
+   197→      inset 0 1px 3px rgba(255, 255, 255, 0.9),
+   198→      0 25px 50px -12px rgba(244, 63, 94, 0.08);
+   199→  }
+   200→  .glass-card {
+   201→    background: rgba(255, 255, 255, 0.55);
+   202→    backdrop-filter: blur(20px);
+   203→    -webkit-backdrop-filter: blur(20px);
+   204→    border: 1px solid rgba(255, 255, 255, 0.7);
+   205→  }
+   206→  .glass-premium-dark {
+   207→    background: linear-gradient(135deg, rgba(15, 10, 18, 0.98), rgba(24, 16, 29, 0.92));
+   208→    backdrop-filter: blur(30px);
+   209→    -webkit-backdrop-filter: blur(30px);
+   210→    border: 1px solid rgba(255, 255, 255, 0.06);
+   211→    box-shadow:
+   212→      0 30px 60px rgba(10, 5, 15, 0.5),
+   213→      inset 0 1px 1px rgba(255, 255, 255, 0.1);
+   214→  }
+   215→  .perspective {
+   216→    perspective: 1500px;
+   217→  }
+   218→  .preserve-3d {
+   219→    transform-style: preserve-3d;
+   220→  }
+   221→  .backface-hidden {
+   222→    backface-visibility: hidden;
+   223→    -webkit-backface-visibility: hidden;
+   224→  }
+   225→  .rotate-y-180 {
+   226→    transform: rotateY(180deg);
+   227→  }
+   228→  .text-balance {
+   229→    text-wrap: balance;
+   230→  }
+   231→  .no-scrollbar::-webkit-scrollbar {
+   232→    display: none;
+   233→  }
+   234→  .no-scrollbar {
+   235→    -ms-overflow-style: none;
+   236→    scrollbar-width: none;
+   237→  }
+   238→  .interactive-scale {
+   239→    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+   240→  }
+   241→  .interactive-scale:hover {
+   242→    transform: scale(1.02);
+   243→  }
+   244→  .interactive-scale:active {
+   245→    transform: scale(0.98);
+   246→  }
+   247→  .premium-border-glowing {
+   248→    position: relative;
+   249→  }
+   250→  .premium-border-glowing::after {
+   251→    content: "";
+   252→    position: absolute;
+   253→    inset: -1px;
+   254→    border-radius: inherit;
+   255→    background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(251, 191, 36, 0.3), rgba(244, 63, 94, 0.25), rgba(255, 255, 255, 0.9));
+   256→    z-index: -1;
+   257→    opacity: 0.5;
+   258→    pointer-events: none;
+   259→    transition: opacity 300ms;
+   260→  }
+   261→  .premium-border-glowing:hover::after {
+   262→    opacity: 0.9;
+   263→  }
+   264→  .editorial-line {
+   265→    height: 1px;
+   266→    background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.35), transparent);
+   267→    position: relative;
+   268→  }
+   269→  .editorial-line::after {
+   270→    content: "✦";
+   271→    position: absolute;
+   272→    left: 50%;
+   273→    top: 50%;
+   274→    transform: translate(-50%, -50%) scale(0.8);
+   275→    background: #fdfbf7;
+   276→    padding: 0 12px;
+   277→    color: #d4af37;
+   278→  }
+   279→  .text-shadow-glow {
+   280→    text-shadow: 0 0 24px rgba(251, 191, 36, 0.4), 0 0 48px rgba(244, 63, 94, 0.2);
+   281→  }
+   282→}
+   283→
+   284→@keyframes morph-1 {
+   285→  0% { border-radius: 40% 60% 70% 30% / 40% 40% 60% 60%; transform: translate3d(0, 0, 0) scale(1) rotate(0deg); }
+   286→  50% { border-radius: 60% 40% 50% 50% / 50% 40% 60% 50%; transform: translate3d(40px, -40px, 0) scale(1.1) rotate(45deg); }
+   287→  100% { border-radius: 50% 50% 40% 60% / 50% 50% 40% 50%; transform: translate3d(-30px, 40px, 0) scale(0.95) rotate(90deg); }
+   288→}
+   289→@keyframes morph-2 {
+   290→  0% { border-radius: 50% 50% 40% 60% / 50% 50% 40% 50%; transform: translate3d(0, 0, 0) scale(0.95) rotate(0deg); }
+   291→  50% { border-radius: 40% 60% 50% 50% / 40% 50% 50% 60%; transform: translate3d(-40px, 40px, 0) scale(1.05) rotate(-45deg); }
+   292→  100% { border-radius: 60% 40% 60% 40% / 50% 40% 60% 40%; transform: translate3d(40px, -40px, 0) scale(1) rotate(-90deg); }
+   293→}
+   294→.liquid-blob-1 {
+   295→  filter: blur(80px);
+   296→  animation: morph-1 18s ease-in-out infinite alternate;
+   297→  will-change: transform, border-radius;
+   298→  transform: translate3d(0, 0, 0);
+   299→  backface-visibility: hidden;
+   300→  -webkit-backface-visibility: hidden;
+   301→}
+   302→.liquid-blob-2 {
+   303→  filter: blur(90px);
+   304→  animation: morph-2 22s ease-in-out infinite alternate-reverse;
+   305→  will-change: transform, border-radius;
+   306→  transform: translate3d(0, 0, 0);
+   307→  backface-visibility: hidden;
+   308→  -webkit-backface-visibility: hidden;
+   309→}
+   310→
+   311→@keyframes float-item {
+   312→  0%, 100% { transform: translateY(0) rotate(0deg); }
+   313→  50% { transform: translateY(-10px) rotate(1deg); }
+   314→}
+   315→.animate-float {
+   316→  animation: float-item 6s ease-in-out infinite;
+   317→}
+   318→
+   319→@keyframes shimmer-anim {
+   320→  0% { background-position: -200% 0; }
+   321→  100% { background-position: 200% 0; }
+   322→}
+   323→.shimmer {
+   324→  background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.8) 50%, rgba(255, 255, 255, 0) 100%);
+   325→  background-size: 200% 100%;
+   326→  animation: shimmer-anim 4s infinite;
+   327→}
+   328→
+   329→@keyframes float-bubble {
+   330→  0% { transform: translateY(0) scale(0.4) translateX(0); opacity: 0; }
+   331→  15% { opacity: 0.85; }
+   332→  85% { opacity: 0.85; }
+   333→  100% { transform: translateY(-140px) scale(1.2) translateX(var(--wobble, 8px)); opacity: 0; }
+   334→}
+   335→.vial-bubble {
+   336→  position: absolute;
+   337→  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(251, 191, 36, 0.5));
+   338→  border-radius: 50%;
+   339→  pointer-events: none;
+   340→  bottom: 12px;
+   341→  animation: float-bubble 4s infinite linear;
+   342→  box-shadow: 0 0 6px rgba(251, 191, 36, 0.2);
+   343→}
+   344→
+   345→@keyframes bounce-bar {
+   346→  0% { height: 4px; }
+   347→  100% { height: 26px; }
+   348→}
+   349→.music-bar-active {
+   350→  animation: bounce-bar 0.7s ease-in-out infinite alternate;
+   351→}
+   352→
+   353→@keyframes flicker {
+   354→  0% { transform: scale(1) rotate(-1deg); }
+   355→  50% { transform: scale(1.05, 0.95) rotate(0.5deg); }
+   356→  100% { transform: scale(0.95, 1.05) rotate(-0.5deg); }
+   357→}
+   358→.flame {
+   359→  width: 12px;
+   360→  height: 26px;
+   361→  background: linear-gradient(to top, rgba(244, 63, 94, 0.95) 0%, rgba(251, 191, 36, 0.9) 60%, rgba(255, 255, 255, 1) 100%);
+   362→  border-radius: 50% 50% 20% 20% / 60% 60% 40% 40%;
+   363→  filter: drop-shadow(0 0 8px rgba(251, 191, 36, 0.85)) drop-shadow(0 0 16px rgba(244, 63, 94, 0.55));
+   364→  animation: flicker 1.2s ease-in-out infinite alternate;
+   365→  transform-origin: bottom center;
+   366→  display: block;
+   367→  will-change: transform;
+   368→  transform: translate3d(0, 0, 0);
+   369→}
+   370→
+   371→.lyric-line {
+   372→  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+   373→  opacity: 0.18;
+   374→  padding: 6px 0;
+   375→}
+   376→.lyric-line.active {
+   377→  opacity: 1;
+   378→  color: #b45309;
+   379→  font-weight: 700;
+   380→  transform: scale(1.05);
+   381→  text-shadow: 0 0 14px rgba(251, 191, 36, 0.35);
+   382→}
+   383→
+   384→@keyframes glow-pulse {
+   385→  0% { box-shadow: 0 0 8px 1px rgba(251, 191, 36, 0.15), 0 0 15px 3px rgba(244, 63, 94, 0.08); }
+   386→  100% { box-shadow: 0 0 18px 5px rgba(251, 191, 36, 0.4), 0 0 30px 10px rgba(244, 63, 94, 0.2); }
+   387→}
+   388→.vinyl-glow {
+   389→  box-shadow: 0 0 0 0 rgba(251, 191, 36, 0);
+   390→  transition: box-shadow 0.3s ease-in-out;
+   391→}
+   392→.vinyl-glow.playing {
+   393→  animation: glow-pulse 2s infinite alternate;
+   394→}
+   395→
+   396→.vinyl-metallic {
+   397→  background: repeating-conic-gradient(
+   398→    from 0deg,
+   399→    #0a0a0a 0deg 8deg,
+   400→    #1c1c1c 8deg 16deg,
+   401→    #0a0a0a 16deg 24deg,
+   402→    #222 24deg 32deg,
+   403→    #0a0a0a 32deg 40deg
+   404→  );
+   405→}
+   406→
+   407→@keyframes rotate-slow {
+   408→  0% { transform: rotate(0deg) translate3d(0, 0, 0); }
+   409→  50% { transform: rotate(180deg) translate3d(20px, -20px, 0); }
+   410→  100% { transform: rotate(360deg) translate3d(0, 0, 0); }
+   411→}
+   412→.ambient-glow-circle {
+   413→  position: absolute;
+   414→  border-radius: 50%;
+   415→  background: radial-gradient(circle, rgba(251, 191, 36, 0.2) 0%, transparent 70%);
+   416→  filter: blur(50px);
+   417→  pointer-events: none;
+   418→  z-index: 0;
+   419→  animation: rotate-slow 24s linear infinite;
+   420→  will-change: transform;
+   421→  transform: translate3d(0, 0, 0);
+   422→  backface-visibility: hidden;
+   423→  -webkit-backface-visibility: hidden;
+   424→}
+   425→
+   426→.glow-aura {
+   427→  position: absolute;
+   428→  inset: 0;
+   429→  border-radius: 2rem;
+   430→  background: linear-gradient(135deg, rgba(251, 191, 36, 0.12), rgba(244, 63, 94, 0.12));
+   431→  filter: blur(24px);
+   432→  opacity: 0;
+   433→  transition: opacity 0.4s;
+   434→  pointer-events: none;
+   435→  z-index: -1;
+   436→}
+   437→.group:hover .glow-aura {
+   438→  opacity: 1;
+   439→}
+   440→
+   441→.code-interactive-token {
+   442→  display: inline-block;
+   443→  cursor: pointer;
+   444→  transition: all 0.2s;
+   445→  position: relative;
+   446→}
+   447→.code-interactive-token:hover {
+   448→  transform: translateY(-1px);
+   449→  text-shadow: 0 0 10px currentColor;
+   450→}
+   451→
+   452→.hacker-payload-btn {
+   453→  background: rgba(244, 63, 94, 0.04);
+   454→  backdrop-filter: blur(12px);
+   455→  -webkit-backdrop-filter: blur(12px);
+   456→  border: 1px solid rgba(244, 63, 94, 0.25);
+   457→  box-shadow:
+   458→    inset 0 1px 1px rgba(255, 255, 255, 0.05),
+   459→    0 0 24px rgba(244, 63, 94, 0.12);
+   460→  font-family: var(--font-fira), monospace;
+   461→  position: relative;
+   462→  overflow: hidden;
+   463→  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+   464→}
+   465→.hacker-payload-btn:hover:not(:disabled) {
+   466→  background: rgba(244, 63, 94, 0.08);
+   467→  border-color: rgba(244, 63, 94, 0.5);
+   468→  box-shadow:
+   469→    0 0 40px rgba(244, 63, 94, 0.3),
+   470→    inset 0 0 10px rgba(244, 63, 94, 0.12);
+   471→  transform: translateY(-1px);
+   472→}
+   473→
+   474→.hacker-corner {
+   475→  position: absolute;
+   476→  width: 8px;
+   477→  height: 8px;
+   478→  border-color: rgba(244, 63, 94, 0.55);
+   479→  border-style: solid;
+   480→  pointer-events: none;
+   481→  transition: border-color 0.3s;
+   482→}
+   483→.hacker-payload-btn:hover .hacker-corner {
+   484→  border-color: rgba(244, 63, 94, 0.95);
+   485→}
+   486→.corner-tl { top: 6px; left: 6px; border-width: 1px 0 0 1px; }
+   487→.corner-tr { top: 6px; right: 6px; border-width: 1px 1px 0 0; }
+   488→.corner-bl { bottom: 6px; left: 6px; border-width: 0 0 1px 1px; }
+   489→.corner-br { bottom: 6px; right: 6px; border-width: 0 1px 1px 0; }
+   490→
+   491→.touch-none {
+   492→  touch-action: none;
+   493→}
+   494→
+   495→@keyframes gradient-pan {
+   496→  0% { background-position: 0% 50%; }
+   497→  50% { background-position: 100% 50%; }
+   498→  100% { background-position: 0% 50%; }
+   499→}
+   500→.animate-gradient-pan {
+   501→  background-size: 200% 200%;
+   502→  animation: gradient-pan 8s ease infinite;
+   503→}
+   504→
+   505→@keyframes spin-slow {
+   506→  to { transform: rotate(360deg); }
+   507→}
+   508→.animate-spin-slow {
+   509→  animation: spin-slow 20s linear infinite;
+   510→}
+   511→.animate-spin-slow-reverse {
+   512→  animation: spin-slow 10s linear infinite reverse;
+   513→}
+   514→
+   515→@media (prefers-reduced-motion: reduce) {
+   516→  *,
+   517→  *::before,
+   518→  *::after {
+   519→    animation-duration: 0.001ms !important;
+   520→    animation-iteration-count: 1 !important;
+   521→    transition-duration: 0.001ms !important;
+   522→    scroll-behavior: auto !important;
+   523→  }
+   524→  .liquid-blob-1,
+   525→  .liquid-blob-2,
+   526→  .ambient-glow-circle,
+   527→  .animate-float,
+   528→  .shimmer,
+   529→  .animate-spin-slow,
+   530→  .animate-spin-slow-reverse,
+   531→  .animate-gradient-pan,
+   532→  .flame,
+   533→  .vial-bubble,
+   534→  .music-bar-active,
+   535→  .vinyl-glow.playing {
+   536→    animation: none !important;
+   537→  }
+   538→}
+   539→
+   540→@keyframes confetti-fall {
+   541→  0% {
+   542→    transform: translate3d(0, -10vh, 0) rotate(0deg);
+   543→    opacity: 1;
+   544→  }
+   545→  100% {
+   546→    transform: translate3d(var(--drift, 0px), 110vh, 0) rotate(var(--spin, 720deg));
+   547→    opacity: 0;
+   548→  }
+   549→}
+   550→
+   551→@keyframes float-up-drift {
+   552→  0% {
+   553→    transform: translate3d(0, 0, 0) rotate(0deg);
+   554→    opacity: 0;
+   555→  }
+   556→  10% {
+   557→    opacity: 1;
+   558→  }
+   559→  90% {
+   560→    opacity: 1;
+   561→  }
+   562→  100% {
+   563→    transform: translate3d(var(--drift-x, 30px), -90vh, 0) rotate(var(--spin, 360deg));
+   564→    opacity: 0;
+   565→  }
+   566→}
+   567→
+   568→@keyframes focus-ring-pulse {
+   569→  0%, 100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.4); }
+   570→  50% { box-shadow: 0 0 0 4px rgba(251, 191, 36, 0.1); }
+   571→}
+   572→
+   573→.focus-ring-visible:focus-visible {
+   574→  outline: 2px solid rgba(251, 191, 36, 0.7);
+   575→  outline-offset: 3px;
+   576→  border-radius: inherit;
+   577→}
+   578→
+   579→@keyframes glyph-bob {
+   580→  0%, 100% { transform: translateY(0) rotate(0deg); }
+   581→  50% { transform: translateY(-12px) rotate(6deg); }
+   582→}
+   583→.animate-glyph-bob {
+   584→  animation: glyph-bob 7s ease-in-out infinite;
+   585→}
+   586→
+   587→.section-divider-glyph {
+   588→  display: flex;
+   589→  align-items: center;
+   590→  justify-content: center;
+   591→  gap: 1rem;
+   592→  margin: 0 auto;
+   593→  max-width: 24rem;
+   594→}
+   595→.section-divider-glyph::before,
+   596→.section-divider-glyph::after {
+   597→  content: "";
+   598→  flex: 1;
+   599→  height: 1px;
+   600→  background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.35), transparent);
+   601→}
+   602→
+   603→.heena-range {
+   604→  -webkit-appearance: none;
+   605→  appearance: none;
+   606→  height: 4px;
+   607→  border-radius: 9999px;
+   608→  background: linear-gradient(90deg, rgba(251,191,36,0.6), rgba(244,63,94,0.6));
+   609→  outline: none;
+   610→  cursor: pointer;
+   611→}
+   612→.heena-range::-webkit-slider-thumb {
+   613→  -webkit-appearance: none;
+   614→  appearance: none;
+   615→  width: 14px;
+   616→  height: 14px;
+   617→  border-radius: 50%;
+   618→  background: #fff;
+   619→  border: 2px solid #f59e0b;
+   620→  box-shadow: 0 2px 6px rgba(244,63,94,0.3);
+   621→  cursor: pointer;
+   622→  transition: transform 0.15s ease;
+   623→}
+   624→.heena-range::-webkit-slider-thumb:hover {
+   625→  transform: scale(1.2);
+   626→}
+   627→.heena-range::-moz-range-thumb {
+   628→  width: 14px;
+   629→  height: 14px;
+   630→  border-radius: 50%;
+   631→  background: #fff;
+   632→  border: 2px solid #f59e0b;
+   633→  box-shadow: 0 2px 6px rgba(244,63,94,0.3);
+   634→  cursor: pointer;
+   635→}
+   636→.dark .heena-range {
+   637→  background: linear-gradient(90deg, rgba(251,191,36,0.5), rgba(244,63,94,0.5));
+   638→}
+   639→
+   640→/* ============================================================
+   641→   Round 4 — additional styling details
+   642→   ============================================================ */
+   643→
+   644→/* Ornamental section divider: ✦ — ✦ with an animated shimmer sweep */
+   645→.section-ornament {
+   646→  display: inline-flex;
+   647→  align-items: center;
+   648→  justify-content: center;
+   649→  gap: 0.75rem;
+   650→  margin: 0 auto;
+   651→}
+   652→.section-ornament::before,
+   653→.section-ornament::after {
+   654→  content: "";
+   655→  height: 1px;
+   656→  width: 2.5rem;
+   657→  background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.5), transparent);
+   658→  position: relative;
+   659→}
+   660→.section-ornament .ornament-glyph {
+   661→  color: rgba(180, 83, 9, 0.6);
+   662→  font-size: 0.75rem;
+   663→  position: relative;
+   664→}
+   665→.section-ornament .ornament-glyph::after {
+   666→  content: "";
+   667→  position: absolute;
+   668→  inset: -4px;
+   669→  border-radius: 50%;
+   670→  background: radial-gradient(circle, rgba(251, 191, 36, 0.25), transparent 70%);
+   671→  z-index: -1;
+   672→  animation: ornament-pulse 3s ease-in-out infinite;
+   673→}
+   674→@keyframes ornament-pulse {
+   675→  0%, 100% { opacity: 0.5; transform: scale(1); }
+   676→  50% { opacity: 1; transform: scale(1.4); }
+   677→}
+   678→
+   679→/* Glass card gradient ring on hover — a subtle iridescent border */
+   680→.glass-premium,
+   681→.glass-card {
+   682→  position: relative;
+   683→  transition: box-shadow 0.4s ease, border-color 0.4s ease;
+   684→}
+   685→.glass-premium:hover,
+   686→.glass-card:hover {
+   687→  border-color: rgba(251, 191, 36, 0.5);
+   688→  box-shadow:
+   689→    inset 0 1px 3px rgba(255, 255, 255, 0.9),
+   690→    0 25px 50px -12px rgba(244, 63, 94, 0.12),
+   691→    0 0 0 1px rgba(251, 191, 36, 0.15),
+   692→    0 0 24px rgba(251, 191, 36, 0.08);
+   693→}
+   694→
+   695→/* A traveling glow dot that sweeps along the scroll progress bar */
+   696→.scroll-progress-glow {
+   697→  position: absolute;
+   698→  top: 50%;
+   699→  width: 24px;
+   700→  height: 24px;
+   701→  border-radius: 50%;
+   702→  background: radial-gradient(circle, rgba(251, 191, 36, 0.8), rgba(244, 63, 94, 0.3) 50%, transparent 70%);
+   703→  transform: translate(-50%, -50%);
+   704→  filter: blur(2px);
+   705→  pointer-events: none;
+   706→  mix-blend-mode: screen;
+   707→}
+   708→
+   709→/* Smoke wisp rising (used by CakeSection) */
+   710→@keyframes smoke-rise {
+   711→  0% {
+   712→    transform: translate3d(0, 0, 0) scale(0.4);
+   713→    opacity: 0;
+   714→  }
+   715→  20% {
+   716→    opacity: 0.5;
+   717→  }
+   718→  100% {
+   719→    transform: translate3d(var(--drift, -8px), -160px, 0) scale(2.4);
+   720→    opacity: 0;
+   721→  }
+   722→}
+   723→.smoke-wisp {
+   724→  position: absolute;
+   725→  width: 28px;
+   726→  height: 28px;
+   727→  border-radius: 50%;
+   728→  background: radial-gradient(circle, rgba(120, 113, 108, 0.45) 0%, rgba(120, 113, 108, 0.15) 50%, transparent 80%);
+   729→  filter: blur(8px);
+   730→  pointer-events: none;
+   731→  animation: smoke-rise 2.2s ease-out forwards;
+   732→}
+   733→
+   734→/* Hero constellation — tiny dots + faint connector lines around the title */
+   735→.constellation-dot {
+   736→  position: absolute;
+   737→  width: 3px;
+   738→  height: 3px;
+   739→  border-radius: 50%;
+   740→  background: rgba(251, 191, 36, 0.7);
+   741→  box-shadow: 0 0 6px rgba(251, 191, 36, 0.6);
+   742→  animation: constellation-twinkle 4s ease-in-out infinite;
+   743→}
+   744→@keyframes constellation-twinkle {
+   745→  0%, 100% { opacity: 0.3; transform: scale(0.8); }
+   746→  50% { opacity: 1; transform: scale(1.3); }
+   747→}
+   748→
+   749→/* A soft, animated gradient halo behind section headings */
+   750→.heading-halo {
+   751→  position: relative;
+   752→}
+   753→.heading-halo::before {
+   754→  content: "";
+   755→  position: absolute;
+   756→  left: 50%;
+   757→  top: 50%;
+   758→  width: 120%;
+   759→  height: 200%;
+   760→  transform: translate(-50%, -50%);
+   761→  background: radial-gradient(ellipse at center, rgba(251, 191, 36, 0.08) 0%, transparent 60%);
+   762→  pointer-events: none;
+   763→  z-index: -1;
+   764→  animation: halo-breathe 6s ease-in-out infinite;
+   765→}
+   766→@keyframes halo-breathe {
+   767→  0%, 100% { opacity: 0.6; transform: translate(-50%, -50%) scale(1); }
+   768→  50% { opacity: 1; transform: translate(-50%, -50%) scale(1.08); }
+   769→}
+   770→
+   771→/* A gradient sheen that sweeps across stat cards on hover */
+   772→.stat-sheen {
+   773→  position: relative;
+   774→  overflow: hidden;
+   775→}
+   776→.stat-sheen::after {
+   777→  content: "";
+   778→  position: absolute;
+   779→  inset: 0;
+   780→  background: linear-gradient(120deg, transparent 30%, rgba(255, 255, 255, 0.5) 50%, transparent 70%);
+   781→  transform: translateX(-100%);
+   782→  transition: transform 0.7s ease;
+   783→  pointer-events: none;
+   784→}
+   785→.stat-sheen:hover::after {
+   786→  transform: translateX(100%);
+   787→}
+   788→
+   789→/* Keyboard kbd styling */
+   790→kbd {
+   791→  font-family: var(--font-fira), monospace;
+   792→  font-size: 0.65rem;
+   793→  display: inline-flex;
+   794→  align-items: center;
+   795→  justify-content: center;
+   796→  min-width: 1.5rem;
+   797→  height: 1.5rem;
+   798→  padding: 0 0.4rem;
+   799→  border-radius: 0.375rem;
+   800→  border: 1px solid rgba(180, 83, 9, 0.25);
+   801→  background: rgba(251, 191, 36, 0.08);
+   802→  color: rgba(120, 53, 15, 0.85);
+   803→  box-shadow: 0 1px 0 rgba(180, 83, 9, 0.15), inset 0 -1px 0 rgba(180, 83, 9, 0.1);
+   804→}
+   805→
+   806→/* Decorative corner flourish for premium cards (art-deco style) */
+   807→.corner-flourish {
+   808→  position: absolute;
+   809→  width: 24px;
+   810→  height: 24px;
+   811→  pointer-events: none;
+   812→  opacity: 0.4;
+   813→}
+   814→.corner-flourish::before,
+   815→.corner-flourish::after {
+   816→  content: "";
+   817→  position: absolute;
+   818→  background: rgba(180, 83, 9, 0.4);
+   819→}
+   820→.corner-flourish::before {
+   821→  width: 12px;
+   822→  height: 1px;
+   823→}
+   824→.corner-flourish::after {
+   825→  width: 1px;
+   826→  height: 12px;
+   827→}
+   828→.corner-flourish.tl { top: 8px; left: 8px; }
+   829→.corner-flourish.tl::before { top: 0; left: 0; }
+   830→.corner-flourish.tl::after { top: 0; left: 0; }
+   831→.corner-flourish.tr { top: 8px; right: 8px; }
+   832→.corner-flourish.tr::before { top: 0; right: 0; }
+   833→.corner-flourish.tr::after { top: 0; right: 0; }
+   834→.corner-flourish.bl { bottom: 8px; left: 8px; }
+   835→.corner-flourish.bl::before { bottom: 0; left: 0; }
+   836→.corner-flourish.bl::after { bottom: 0; left: 0; }
+   837→.corner-flourish.br { bottom: 8px; right: 8px; }
+   838→.corner-flourish.br::before { bottom: 0; right: 0; }
+   839→.corner-flourish.br::after { bottom: 0; right: 0; }
+   840→
+   841→/* Dark-mode tweaks for the new elements */
+   842→.dark .section-ornament .ornament-glyph { color: rgba(251, 191, 36, 0.8); }
+   843→.dark .section-ornament::before,
+   844→.dark .section-ornament::after {
+   845→  background: linear-gradient(90deg, transparent, rgba(251, 191, 36, 0.5), transparent);
+   846→}
+   847→.dark .corner-flourish::before,
+   848→.dark .corner-flourish::after {
+   849→  background: rgba(251, 191, 36, 0.5);
+   850→}
+   851→.dark kbd {
+   852→  border-color: rgba(251, 191, 36, 0.3);
+   853→  background: rgba(251, 191, 36, 0.12);
+   854→  color: rgba(251, 191, 36, 0.95);
+   855→}
+   856→
+   857→/* Reduced-motion: neutralize the new infinite animations */
+   858→@media (prefers-reduced-motion: reduce) {
+   859→  .constellation-dot,
+   860→  .heading-halo::before,
+   861→  .section-ornament .ornament-glyph::after,
+   862→  .reading-star,
+   863→  .vinyl-star-field .vs-star,
+   864→  .hero-floating-ornament,
+   865→  .wax-seal-stamp .wax-seal-rotate,
+   866→  .cake-arch-glyph {
+   867→    animation: none !important;
+   868→  }
+   869→}
+   870→
+   871→/* ============================================================
+   872→   NEW STYLE ADDITIONS — premium details for the new features
+   873→   ============================================================ */
+   874→
+   875→/* Corner-flourish compound-class aliases (used by WishHoroscope + Reading mode) */
+   876→.corner-flourish-tl { top: 8px; left: 8px; }
+   877→.corner-flourish-tl::before { top: 0; left: 0; }
+   878→.corner-flourish-tl::after { top: 0; left: 0; }
+   879→.corner-flourish-tr { top: 8px; right: 8px; }
+   880→.corner-flourish-tr::before { top: 0; right: 0; }
+   881→.corner-flourish-tr::after { top: 0; right: 0; }
+   882→.corner-flourish-bl { bottom: 8px; left: 8px; }
+   883→.corner-flourish-bl::before { bottom: 0; left: 0; }
+   884→.corner-flourish-bl::after { bottom: 0; left: 0; }
+   885→.corner-flourish-br { bottom: 8px; right: 8px; }
+   886→.corner-flourish-br::before { bottom: 0; right: 0; }
+   887→.corner-flourish-br::after { bottom: 0; right: 0; }
+   888→
+   889→/* Reading-mode star field — a starry backdrop for the focused memory overlay */
+   890→.reading-stars {
+   891→  pointer-events: none;
+   892→}
+   893→.reading-star {
+   894→  position: absolute;
+   895→  width: 2px;
+   896→  height: 2px;
+   897→  border-radius: 50%;
+   898→  background: rgba(251, 191, 36, 0.9);
+   899→  box-shadow: 0 0 4px rgba(251, 191, 36, 0.7), 0 0 8px rgba(244, 63, 94, 0.3);
+   900→  animation: reading-star-twinkle 3s ease-in-out infinite;
+   901→}
+   902→@keyframes reading-star-twinkle {
+   903→  0%, 100% { opacity: 0.2; transform: scale(0.7); }
+   904→  50% { opacity: 1; transform: scale(1.4); }
+   905→}
+   906→
+   907→/* Section divider — ornamental glyph with shimmer, for between-section breaks */
+   908→.section-divider {
+   909→  display: flex;
+   910→  align-items: center;
+   911→  justify-content: center;
+   912→  gap: 1rem;
+   913→  padding: 2rem 0;
+   914→  pointer-events: none;
+   915→  user-select: none;
+   916→}
+   917→.section-divider .divider-line {
+   918→  height: 1px;
+   919→  width: 80px;
+   920→  background: linear-gradient(90deg, transparent, rgba(180, 83, 9, 0.35), transparent);
+   921→}
+   922→.section-divider .divider-glyph {
+   923→  font-family: var(--font-serif), serif;
+   924→  font-size: 0.9rem;
+   925→  color: rgba(180, 83, 9, 0.55);
+   926→  letter-spacing: 0.5em;
+   927→  position: relative;
+   928→  animation: divider-shimmer 4s ease-in-out infinite;
+   929→}
+   930→@keyframes divider-shimmer {
+   931→  0%, 100% { opacity: 0.5; text-shadow: 0 0 0 transparent; }
+   932→  50% { opacity: 1; text-shadow: 0 0 12px rgba(251, 191, 36, 0.5); }
+   933→}
+   934→.dark .section-divider .divider-line {
+   935→  background: linear-gradient(90deg, transparent, rgba(251, 191, 36, 0.4), transparent);
+   936→}
+   937→.dark .section-divider .divider-glyph {
+   938→  color: rgba(251, 191, 36, 0.7);
+   939→}
+   940→
+   941→/* Vinyl section ambient star field — a quiet cosmic backdrop behind the record player */
+   942→.vinyl-star-field {
+   943→  position: absolute;
+   944→  inset: 0;
+   945→  pointer-events: none;
+   946→  overflow: hidden;
+   947→}
+   948→.vinyl-star-field .vs-star {
+   949→  position: absolute;
+   950→  width: 2px;
+   951→  height: 2px;
+   952→  border-radius: 50%;
+   953→  background: rgba(251, 191, 36, 0.6);
+   954→  box-shadow: 0 0 4px rgba(251, 191, 36, 0.4);
+   955→  animation: vinyl-star-twinkle 5s ease-in-out infinite;
+   956→}
+   957→@keyframes vinyl-star-twinkle {
+   958→  0%, 100% { opacity: 0.15; transform: scale(0.6); }
+   959→  50% { opacity: 0.9; transform: scale(1.2); }
+   960→}
+   961→.dark .vinyl-star-field .vs-star {
+   962→  background: rgba(251, 191, 36, 0.8);
+   963→  box-shadow: 0 0 6px rgba(251, 191, 36, 0.6);
+   964→}
+   965→
+   966→/* Hero floating ornaments — slow-drifting glyphs in the hero background */
+   967→.hero-floating-ornament {
+   968→  position: absolute;
+   969→  font-family: var(--font-serif), serif;
+   970→  color: rgba(180, 83, 9, 0.2);
+   971→  font-size: 1.5rem;
+   972→  pointer-events: none;
+   973→  user-select: none;
+   974→  animation: hero-ornament-drift 12s ease-in-out infinite;
+   975→}
+   976→@keyframes hero-ornament-drift {
+   977→  0%, 100% { transform: translate(0, 0) rotate(0deg); opacity: 0.2; }
+   978→  25% { transform: translate(8px, -12px) rotate(8deg); opacity: 0.5; }
+   979→  50% { transform: translate(-6px, -20px) rotate(-6deg); opacity: 0.3; }
+   980→  75% { transform: translate(-10px, -8px) rotate(4deg); opacity: 0.45; }
+   981→}
+   982→.dark .hero-floating-ornament {
+   983→  color: rgba(251, 191, 36, 0.25);
+   984→}
+   985→
+   986→/* Footer wax-seal stamp — a decorative embossed circular seal */
+   987→.wax-seal-stamp {
+   988→  position: relative;
+   989→  display: inline-flex;
+   990→  align-items: center;
+   991→  justify-content: center;
+   992→  width: 56px;
+   993→  height: 56px;
+   994→  border-radius: 50%;
+   995→  background: radial-gradient(circle at 35% 30%, #f43f5e 0%, #be123c 60%, #881337 100%);
+   996→  box-shadow:
+   997→    inset 0 -2px 4px rgba(0, 0, 0, 0.3),
+   998→    inset 0 2px 3px rgba(255, 255, 255, 0.2),
+   999→    0 4px 12px rgba(190, 18, 60, 0.4);
+  1000→  color: rgba(255, 230, 230, 0.92);
+  1001→  font-family: var(--font-serif), serif;
+  1002→  font-weight: 700;
+  1003→  font-size: 1.1rem;
+  1004→  letter-spacing: 0.05em;
+  1005→  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.4);
+  1006→}
+  1007→.wax-seal-stamp::before {
+  1008→  content: "";
+  1009→  position: absolute;
+  1010→  inset: 4px;
+  1011→  border-radius: 50%;
+  1012→  border: 1px dashed rgba(255, 230, 230, 0.4);
+  1013→}
+  1014→.wax-seal-rotate {
+  1015→  position: absolute;
+  1016→  inset: -3px;
+  1017→  border-radius: 50%;
+  1018→  border: 1px dotted rgba(190, 18, 60, 0.3);
+  1019→  animation: wax-seal-spin 30s linear infinite;
+  1020→}
+  1021→@keyframes wax-seal-spin {
+  1022→  to { transform: rotate(360deg); }
+  1023→}
+  1024→
+  1025→/* Cake section decorative arch — ornamental SVG-friendly glyph row above the cake */
+  1026→.cake-arch {
+  1027→  display: flex;
+  1028→  align-items: center;
+  1029→  justify-content: center;
+  1030→  gap: 0.5rem;
+  1031→  margin-bottom: 1rem;
+  1032→  font-family: var(--font-serif), serif;
+  1033→  color: rgba(180, 83, 9, 0.45);
+  1034→  pointer-events: none;
+  1035→  user-select: none;
+  1036→}
+  1037→.cake-arch-glyph {
+  1038→  display: inline-block;
+  1039→  animation: cake-arch-sway 4s ease-in-out infinite;
+  1040→}
+  1041→.cake-arch-glyph:nth-child(odd) { animation-delay: 0.2s; }
+  1042→.cake-arch-glyph:nth-child(3n) { animation-delay: 0.4s; }
+  1043→@keyframes cake-arch-sway {
+  1044→  0%, 100% { transform: translateY(0); }
+  1045→  50% { transform: translateY(-3px); }
+  1046→}
+  1047→.dark .cake-arch { color: rgba(251, 191, 36, 0.55); }
+  1048→
+  1049→/* Memory card sheen — iridescent sweep across the back of memory cards on hover */
+  1050→.memory-sheen {
+  1051→  position: relative;
+  1052→  overflow: hidden;
+  1053→}
+  1054→.memory-sheen::after {
+  1055→  content: "";
+  1056→  position: absolute;
+  1057→  inset: 0;
+  1058→  background: linear-gradient(
+  1059→    120deg,
+  1060→    transparent 35%,
+  1061→    rgba(255, 230, 200, 0.18) 45%,
+  1062→    rgba(255, 200, 220, 0.22) 50%,
+  1063→    rgba(220, 200, 255, 0.18) 55%,
+  1064→    transparent 65%
+  1065→  );
+  1066→  transform: translateX(-120%);
+  1067→  transition: transform 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+  1068→  pointer-events: none;
+  1069→}
+  1070→.memory-sheen:hover::after,
+  1071→.memory-sheen:focus-visible::after {
+  1072→  transform: translateX(120%);
+  1073→}
+  1074→
+  1075→/* Iridescent ring for active focus elements (horoscope glyph, reading card) */
+  1076→.iridescent-ring {
+  1077→  position: relative;
+  1078→}
+  1079→.iridescent-ring::before {
+  1080→  content: "";
+  1081→  position: absolute;
+  1082→  inset: -2px;
+  1083→  border-radius: inherit;
+  1084→  padding: 1px;
+  1085→  background: conic-gradient(
+  1086→    from var(--iridescent-angle, 0deg),
+  1087→    rgba(251, 191, 36, 0.6),
+  1088→    rgba(244, 63, 94, 0.5),
+  1089→    rgba(139, 92, 246, 0.5),
+  1090→    rgba(16, 185, 129, 0.4),
+  1091→    rgba(251, 191, 36, 0.6)
+  1092→  );
+  1093→  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  1094→  -webkit-mask-composite: xor;
+  1095→  mask-composite: exclude;
+  1096→  opacity: 0.7;
+  1097→  pointer-events: none;
+  1098→}
+  1099→
+  1100→/* Soft pulse for newly revealed elements (the horoscope reveal) */
+  1101→@keyframes soft-pulse-reveal {
+  1102→  0% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.4); }
+  1103→  70% { box-shadow: 0 0 0 18px rgba(251, 191, 36, 0); }
+  1104→  100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0); }
+  1105→}
+  1106→.pulse-reveal {
+  1107→  animation: soft-pulse-reveal 1.6s ease-out 1;
+  1108→}
+  1109→
+  1110→/* Focus-ring visibility helper (used by interactive card elements) */
+  1111→.focus-ring-visible {
+  1112→  outline: none;
+  1113→}
+  1114→.focus-ring-visible:focus-visible {
+  1115→  outline: 2px solid rgba(251, 191, 36, 0.7);
+  1116→  outline-offset: 3px;
+  1117→  border-radius: 8px;
+  1118→}
+  1119→
+  1120→/* No-scrollbar utility (used by wish album) */
+  1121→.no-scrollbar {
+  1122→  scrollbar-width: thin;
+  1123→  scrollbar-color: rgba(180, 83, 9, 0.3) transparent;
+  1124→}
+  1125→.no-scrollbar::-webkit-scrollbar { width: 6px; }
+  1126→.no-scrollbar::-webkit-scrollbar-track { background: transparent; }
+  1127→.no-scrollbar::-webkit-scrollbar-thumb {
+  1128→  background: rgba(180, 83, 9, 0.25);
+  1129→  border-radius: 3px;
+  1130→}
+  1131→.no-scrollbar::-webkit-scrollbar-thumb:hover {
+  1132→  background: rgba(180, 83, 9, 0.4);
+  1133→}
+  1134→
+  1135→

@@ -6,10 +6,11 @@ import { jarThoughts } from "@/lib/birthday-data";
 import { sparkle } from "./SparkleCanvas";
 import { playChime } from "@/lib/audio";
 import { useStatsStore } from "@/lib/stats-store";
+import SectionHeader from "./SectionHeader";
 
 type Bubble = { id: number; left: number; size: number; wobble: number; duration: number };
 
-type KeptThought = { id: number; text: string };
+type KeptThought = { id: number; text: string; favorite: boolean };
 
 export default function LoveJar() {
   const [bubbles, setBubbles] = useState<Bubble[]>([]);
@@ -17,6 +18,7 @@ export default function LoveJar() {
   const [impact, setImpact] = useState(0);
   const [sparkVisible, setSparkVisible] = useState(false);
   const [kept, setKept] = useState<KeptThought[]>([]);
+  const [showShareToast, setShowShareToast] = useState(false);
   const keptIdRef = useRef(0);
   const idRef = useRef(0);
   const phaseRef = useRef(0);
@@ -92,7 +94,7 @@ export default function LoveJar() {
     const drawn = jarThoughts[Math.floor(Math.random() * jarThoughts.length)];
     setNote(drawn);
     setKept((prev) => {
-      const next = [{ id: keptIdRef.current++, text: drawn }, ...prev];
+      const next = [{ id: keptIdRef.current++, text: drawn, favorite: false }, ...prev];
       return next.slice(0, 8);
     });
     incStat("thoughtsKept", 1);
@@ -105,24 +107,57 @@ export default function LoveJar() {
     playChime(330, "sine", 0.5, 0.08);
   };
 
+  const toggleFavorite = (id: number) => {
+    setKept((prev) => prev.map((k) => (k.id === id ? { ...k, favorite: !k.favorite } : k)));
+    const target = kept.find((k) => k.id === id);
+    if (target && !target.favorite) {
+      playChime(659.25, "sine", 0.5, 0.1);
+      sparkle({ x: window.innerWidth / 2, y: window.innerHeight / 2, count: 12, kind: "rose" });
+    } else {
+      playChime(392, "sine", 0.4, 0.08);
+    }
+  };
+
+  const shareKept = async () => {
+    const favorites = kept.filter((k) => k.favorite);
+    const source = favorites.length > 0 ? favorites : kept;
+    if (source.length === 0) return;
+    const lines = source.map((k, i) => `${i + 1}. ${k.text}`);
+    const heading = favorites.length > 0
+      ? `Kept thoughts for Heena ✦ (her favorites)`
+      : `Kept thoughts for Heena ✦`;
+    const text = `${heading}\n\n${lines.join("\n")}\n\n— gathered with love`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: "For Heena", text });
+      } else {
+        await navigator.clipboard.writeText(text);
+      }
+    } catch {
+      // user cancelled or clipboard unavailable — no-op
+    }
+    setShowShareToast(true);
+    setTimeout(() => setShowShareToast(false), 2600);
+    sparkle({ x: window.innerWidth / 2, y: window.innerHeight / 2, count: 18, kind: "rainbow" });
+    playChime(784, "sine", 0.7, 0.1);
+  };
+
   return (
     <section className="relative px-4 py-32">
-      <div className="mx-auto mb-16 max-w-3xl text-center">
-        <div className="mb-4 flex items-center justify-center gap-3">
-          <div className="h-px w-10 bg-amber-400/40" />
-          <span className="font-mono-elegant text-[0.65rem] uppercase tracking-[0.4em] text-amber-700/70">
-            a jar of kept thoughts
-          </span>
-          <div className="h-px w-10 bg-amber-400/40" />
-        </div>
-        <h2 className="font-serif-elegant text-4xl font-bold text-stone-800 sm:text-5xl">
-          Things I&rsquo;ve been
-          <span className="bg-gradient-to-r from-amber-600 to-rose-500 bg-clip-text text-transparent">
-            {" "}
-            meaning to say
-          </span>
-        </h2>
-      </div>
+      <SectionHeader
+        number="03"
+        eyebrow="a jar of kept thoughts"
+        accent="amber"
+        title={
+          <>
+            Things I&rsquo;ve been
+            <span className="bg-gradient-to-r from-amber-600 to-rose-500 bg-clip-text text-transparent">
+              {" "}
+              meaning to say
+            </span>
+          </>
+        }
+      />
 
       <div className="mx-auto flex max-w-4xl flex-col items-center gap-10 md:flex-row md:items-center md:justify-center">
         <motion.div
@@ -274,13 +309,34 @@ export default function LoveJar() {
                   <span className="ml-1 rounded-full bg-amber-100 px-2 py-0.5 font-mono-elegant text-[0.6rem] font-bold text-amber-700">
                     {kept.length}
                   </span>
+                  {kept.some((k) => k.favorite) && (
+                    <span className="ml-1 rounded-full bg-rose-100 px-2 py-0.5 font-mono-elegant text-[0.55rem] font-bold text-rose-600">
+                      ★ {kept.filter((k) => k.favorite).length}
+                    </span>
+                  )}
                 </div>
-                <button
-                  onClick={clearKept}
-                  className="font-mono-elegant text-[0.6rem] uppercase tracking-[0.2em] text-stone-400 transition-colors hover:text-rose-500"
-                >
-                  clear
-                </button>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={shareKept}
+                    className="flex items-center gap-1.5 font-mono-elegant text-[0.6rem] uppercase tracking-[0.2em] text-amber-600 transition-colors hover:text-amber-800"
+                    aria-label="Share kept thoughts"
+                  >
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="18" cy="5" r="3" />
+                      <circle cx="6" cy="12" r="3" />
+                      <circle cx="18" cy="19" r="3" />
+                      <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+                      <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+                    </svg>
+                    <span>share</span>
+                  </button>
+                  <button
+                    onClick={clearKept}
+                    className="font-mono-elegant text-[0.6rem] uppercase tracking-[0.2em] text-stone-400 transition-colors hover:text-rose-500"
+                  >
+                    clear
+                  </button>
+                </div>
               </div>
               <div className="no-scrollbar flex max-h-44 flex-col gap-2 overflow-y-auto pr-1">
                 <AnimatePresence initial={false}>
@@ -291,16 +347,46 @@ export default function LoveJar() {
                       animate={{ opacity: 1, x: 0, height: "auto" }}
                       exit={{ opacity: 0, x: 20, height: 0 }}
                       transition={{ duration: 0.3 }}
-                      className="flex items-start gap-2 rounded-xl bg-white/50 px-3 py-2"
+                      className={`flex items-start gap-2 rounded-xl px-3 py-2 transition-colors ${
+                        k.favorite ? "bg-rose-50/80 ring-1 ring-rose-200/60" : "bg-white/50"
+                      }`}
                     >
-                      <span className="mt-1 text-amber-400">·</span>
-                      <span className="font-serif-elegant text-sm italic text-stone-600">
+                      <button
+                        onClick={() => toggleFavorite(k.id)}
+                        className={`mt-0.5 shrink-0 text-base leading-none transition-transform hover:scale-125 ${
+                          k.favorite ? "text-amber-500" : "text-stone-300 hover:text-amber-400"
+                        }`}
+                        aria-label={k.favorite ? "Unfavorite this thought" : "Favorite this thought"}
+                        aria-pressed={k.favorite}
+                      >
+                        {k.favorite ? "★" : "☆"}
+                      </button>
+                      <span className={`font-serif-elegant text-sm italic ${k.favorite ? "text-stone-800" : "text-stone-600"}`}>
                         {k.text}
                       </span>
                     </motion.div>
                   ))}
                 </AnimatePresence>
               </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showShareToast && (
+          <motion.div
+            className="fixed bottom-8 left-1/2 z-[90] -translate-x-1/2"
+            initial={{ opacity: 0, y: 20, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.9 }}
+            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+            role="status"
+            aria-live="polite"
+          >
+            <div className="glass-premium flex items-center gap-2 rounded-full px-5 py-2.5 text-sm text-stone-700 shadow-xl">
+              <span className="text-amber-500">✦</span>
+              <span className="font-serif-elegant italic">kept thoughts gathered — share them with someone you love</span>
             </div>
           </motion.div>
         )}

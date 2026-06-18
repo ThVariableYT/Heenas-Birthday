@@ -6,6 +6,7 @@ import { tracks, type Track } from "@/lib/birthday-data";
 import { sparkle } from "./SparkleCanvas";
 import { playChime, startProceduralMelody, setMasterVolume, getMasterVolume } from "@/lib/audio";
 import { useStatsStore } from "@/lib/stats-store";
+import SectionHeader from "./SectionHeader";
 
 function parseDuration(d: string): number {
   const m = d.match(/(\d+):(\d+)/);
@@ -205,26 +206,21 @@ export default function VinylPlayer() {
         ))}
       </div>
 
-      <div className="relative mx-auto mb-16 max-w-3xl text-center">
-        <div className="mb-4 flex items-center justify-center gap-3">
-          <div className="h-px w-10 bg-amber-400/40" />
-          <span className="font-mono-elegant text-[0.65rem] uppercase tracking-[0.4em] text-amber-700/70">
-            the record player
-          </span>
-          <div className="h-px w-10 bg-amber-400/40" />
-        </div>
-        <h2 className="font-serif-elegant text-4xl font-bold text-stone-800 sm:text-5xl">
-          A few songs,
-          <span className="bg-gradient-to-r from-rose-500 to-amber-600 bg-clip-text text-transparent">
-            {" "}
-            pressed in your honour
-          </span>
-        </h2>
-        <p className="mx-auto mt-6 max-w-lg text-base text-stone-600">
-          Three tracks, three moods. Spin one, scrub the bar, shape the volume — let the words find
-          you.
-        </p>
-      </div>
+      <SectionHeader
+        number="05"
+        eyebrow="the record player"
+        accent="emerald"
+        title={
+          <>
+            A few songs,
+            <span className="bg-gradient-to-r from-rose-500 to-amber-600 bg-clip-text text-transparent">
+              {" "}
+              pressed in your honour
+            </span>
+          </>
+        }
+        subtitle="Three tracks, three moods. Spin one, scrub the bar, shape the volume — let the words find you."
+      />
 
       <div className="mx-auto grid max-w-5xl gap-8 md:grid-cols-[1fr_1.2fr]">
         <motion.div
@@ -239,6 +235,14 @@ export default function VinylPlayer() {
               className={`vinyl-glow absolute -inset-3 rounded-full ${playing ? "playing" : ""}`}
               aria-hidden
             />
+            {/* Vinyl groove pulse rings — expanding concentric rings while playing */}
+            {playing && (
+              <>
+                <span className="vinyl-groove-ring" style={{ animationDelay: "0s" }} aria-hidden />
+                <span className="vinyl-groove-ring" style={{ animationDelay: "1.1s" }} aria-hidden />
+                <span className="vinyl-groove-ring" style={{ animationDelay: "2.2s" }} aria-hidden />
+              </>
+            )}
             <motion.button
               onClick={handleVinylClick}
               className="relative h-56 w-56 cursor-pointer rounded-full focus-ring-visible"
