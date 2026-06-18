@@ -6,12 +6,15 @@ import SparkleCanvas from "@/components/birthday/SparkleCanvas";
 import BackgroundBlobs from "@/components/birthday/BackgroundBlobs";
 import IntroScreen from "@/components/birthday/IntroScreen";
 import HeroSection from "@/components/birthday/HeroSection";
+import TimelineSection from "@/components/birthday/TimelineSection";
 import MemoryDeck from "@/components/birthday/MemoryDeck";
 import LoveJar from "@/components/birthday/LoveJar";
 import VinylPlayer from "@/components/birthday/VinylPlayer";
 import CakeSection from "@/components/birthday/CakeSection";
 import Footer from "@/components/birthday/Footer";
 import FloatingControls from "@/components/birthday/FloatingControls";
+import ScrollProgress from "@/components/birthday/ScrollProgress";
+import BackToTop from "@/components/birthday/BackToTop";
 import { initAudio, resumeAudio, startAmbientPad } from "@/lib/audio";
 
 export default function Home() {
@@ -37,6 +40,7 @@ export default function Home() {
     <div className="relative flex min-h-screen flex-col overflow-x-hidden">
       <BackgroundBlobs />
       <SparkleCanvas />
+      <ScrollProgress />
       <FloatingControls />
 
       <IntroScreen onOpen={() => setEntered(true)} />
@@ -50,6 +54,7 @@ export default function Home() {
             transition={{ duration: 1, delay: 0.2 }}
           >
             <HeroSection />
+            <TimelineSection />
             <MemoryDeck />
             <LoveJar />
             <VinylPlayer />
@@ -58,6 +63,8 @@ export default function Home() {
           </motion.main>
         )}
       </AnimatePresence>
+
+      <BackToTop />
     </div>
   );
 }

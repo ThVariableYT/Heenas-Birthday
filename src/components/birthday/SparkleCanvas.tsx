@@ -68,6 +68,8 @@ export default function SparkleCanvas() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
+    const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const resize = () => {
       canvas.width = window.innerWidth * dpr;
@@ -79,11 +81,17 @@ export default function SparkleCanvas() {
     resize();
     window.addEventListener("resize", resize);
 
+    const MAX_PARTICLES = 400;
     const handleSparkle = (e: Event) => {
+      if (prefersReduced) return;
       const detail = (e as CustomEvent<SparkleRequest>).detail;
       const palette = PALETTES[detail.kind || "gold"];
       const isSmoke = detail.kind === "smoke";
-      for (let i = 0; i < detail.count; i++) {
+      let count = detail.count;
+      if (particlesRef.current.length + count > MAX_PARTICLES) {
+        count = Math.max(0, MAX_PARTICLES - particlesRef.current.length);
+      }
+      for (let i = 0; i < count; i++) {
         const angle = Math.random() * Math.PI * 2;
         const speed = isSmoke ? Math.random() * 1.2 + 0.4 : Math.random() * 5 + 1.5;
         particlesRef.current.push({

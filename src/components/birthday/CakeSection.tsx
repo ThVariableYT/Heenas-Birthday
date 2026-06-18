@@ -26,6 +26,7 @@ export default function CakeSection() {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setSealedWish(saved);
         setHasSealedBefore(true);
       }

@@ -70,3 +70,52 @@ The site is a single-route (`/`) long-scroll experience composed of:
 
 ### Risks
 - None blocking. The site is fully runnable and verified.
+
+---
+
+## Round 2 — Scheduled webDevReview (cron #215324)
+
+**Task ID**: 2
+**Agent**: main (webDevReview)
+**Task**: Assess current status via agent-browser QA, then add more styling details + more features.
+
+### Work Log
+- Read prior worklog; confirmed project stable and fully functional.
+- QA via agent-browser on desktop 1440×900: intro → enter → all sections render; no runtime errors; console clean (only a harmless framer-motion scroll-offset dev warning).
+- **Added ScrollProgress bar** (`ScrollProgress.tsx`) — fixed 3px gradient bar (amber→rose→violet) at top of viewport driven by `useScroll` + spring; glows softly.
+- **Added BackToTop button** (`BackToTop.tsx`) — glass pill, bottom-left, appears after scrolling past ~1 viewport; smooth-scrolls to top with a gold sparkle burst.
+- **Added new Timeline section** (`TimelineSection.tsx` + `timelineMoments` data) — vertical scroll-triggered timeline of 5 "moments" with a progress line that fills as you scroll, alternating glass cards on each side, colored accent dots (amber/rose/violet/emerald) with pulsing glows. Placed between Hero and MemoryDeck.
+- **Upgraded MemoryDeck** — lifted flip state to parent; added "X / 6 revealed" progress bar (gradient fill), "Reveal all / Close all" toggle (animated label swap) and "Shuffle" (Fisher-Yates reorder with rotation animation). Cards re-render in new order with `layout` animation.
+- **Upgraded LoveJar** — drawn thoughts now collect into a "kept thoughts" glass tray below the jar with a live count badge and a "clear" control; entries animate in/out (height + x). Caps at 8 most-recent.
+- **Upgraded CakeSection** — added "whisper your wish" input (140-char, live counter) above the cake; the typed wish (or a default) is sealed into the wish card when the last candle dies, and persisted to `localStorage` (`heena:sealed-wish`). On reload, a previously-sealed wish is restored and labeled "your sealed wish". Rainbow sparkle burst + high chime on seal.
+- **Added theme toggle (light/dark)** via `next-themes` — new `theme-provider.tsx` wrapping the app in `layout.tsx`; sun/moon button in FloatingControls with rotating icon transition; authored comprehensive `.dark` overrides in `globals.css` (dark gradient body bg, dark glass surfaces, remapped stone text/border/bg utilities) so all existing components adapt without per-component edits.
+- **Added Share button** to FloatingControls — uses `navigator.share` when available, falls back to `clipboard.writeText` with a glass toast "Link copied — share it with someone you love"; rose sparkle burst on share.
+- **Hardened SparkleCanvas** — capped live particles at 400 (drops new requests when at cap) and added `prefers-reduced-motion` guard that disables sparkle bursts entirely for reduced-motion users.
+- Lint: two `react-hooks/set-state-in-effect` errors (next-themes mount guard + localStorage read on mount) resolved with targeted `eslint-disable-next-line` comments (these are the canonical patterns). Final `bun run lint` → clean.
+
+### Stage Summary / Verification Results
+- `bun run lint` → clean (0 errors, 0 warnings).
+- Dev server compiles cleanly, `GET / 200`.
+- agent-browser desktop QA confirmed:
+  - Timeline section renders with central progress line + alternating cards + accent dots.
+  - "Reveal all" flips all 6 cards; progress shows "6 / 6 revealed"; button swaps to "Close all".
+  - Love jar: 3 taps → "kept thoughts" tray appears with count badge "3" and the drawn thoughts.
+  - Cake: typed wish "Peace, laughter…" → blow all candles → sealed wish card shows the custom wish in italic + "Relight the candles" button; `localStorage` confirmed holding the wish.
+  - Theme toggle: dark mode background/gradient/glass all adapt; light text readable; toggle back to light works.
+  - Share button: toast "Link copied — share it with someone you love" appears.
+  - Scroll progress bar: gradient bar visible at top after scrolling.
+  - Back-to-top: appears after scroll, smooth-scrolls to top (scrollY → 0).
+- VLM (glm-4.6v) reviews: Timeline "balanced, dynamic layout"; dark mode "excellent readability, high contrast, premium glassmorphism"; sealed wish card "elegant italicized serif, cozy intimate atmosphere"; mobile "functional and mobile-friendly, no critical overflow".
+- Mobile 390×844: all new features fit without critical overflow.
+
+### Unresolved Issues or Risks, and Priority Recommendations for the Next Phase
+- **Harmless dev warning**: framer-motion emits a `useScroll` container-position warning in dev (sections are already `relative`). Non-blocking; cosmetic only. Could be silenced by ensuring the scroll target is a direct positioned ancestor, but functionality (parallax + progress) is unaffected.
+- **Dark mode coverage**: the `.dark` utility overrides cover the common stone text and glass surfaces, but a few one-off colored elements (e.g., memory card back gradients, vinyl label) are intentionally kept as-is since they read well on both themes. A future pass could add `dark:` variants per component for pixel-perfect control.
+- **Reduced motion**: sparkle bursts are now disabled under `prefers-reduced-motion`, but the blob/flame/code-rain CSS animations still run. A future pass could gate these behind a `@media (prefers-reduced-motion: reduce)` block that pauses infinite animations.
+- **Recommended next-phase features**:
+  1. Vinyl player: upload-audio + `.lrc` lyrics, volume + scrub controls (original HTML had this).
+  2. Memory deck: per-card "favorite" toggle that pins favorites to the top.
+  3. Love jar: export kept-thoughts as a printable/shareable card.
+  4. Cake: a small confetti rain (full-screen) when the wish is sealed, beyond the centered sparkle burst.
+  5. Accessibility: full keyboard navigation pass + visible focus rings on all interactive cards.
+  6. Performance: lazy-mount heavy sections (Timeline, Vinyl) with `next/dynamic` to reduce initial JS.
