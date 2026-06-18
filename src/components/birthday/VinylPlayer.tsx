@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { tracks, type Track } from "@/lib/birthday-data";
 import { sparkle } from "./SparkleCanvas";
-import { playChime, startProceduralMelody, setMasterVolume, getMasterVolume, pauseProceduralMelody, resumeProceduralMelody } from "@/lib/audio";
+import { playChime, startProceduralMelody, setMasterVolume, getMasterVolume, pauseProceduralMelody, resumeProceduralMelody, getAnalyser } from "@/lib/audio";
 import { useStatsStore } from "@/lib/stats-store";
 import SectionHeader from "./SectionHeader";
 
@@ -70,6 +70,132 @@ function Waveform({ active, progress }: { active: boolean; progress: number }) {
         );
       })}
     </div>
+  );
+}
+
+/**
+ * RealtimeWaveform — a canvas-based real-time waveform visualizer that reads
+ * time-domain samples from the shared AnalyserNode on the audio engine. When
+ * audio is active, it draws a smooth, glowing waveform that reacts to the
+ * actual sound coming through the main gain bus (procedural melody, ambient
+ * pad, chimes, or uploaded audio). When idle, it draws a flat center line
+ * with a gentle "sleep" ripple so the canvas never looks dead.
+ *
+ * This complements the existing `Waveform` bar visualizer (which is a fake
+ * progress indicator) with a true audio-reactive readout.
+ */
+function RealtimeWaveform({ active }: { active: boolean }) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const rafRef = useRef(0);
+  const phaseRef = useRef(0);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    // High-DPI sizing — match canvas backing store to its CSS size × dpr.
+    const resize = () => {
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = Math.max(1, Math.floor(rect.width * dpr));
+      canvas.height = Math.max(1, Math.floor(rect.height * dpr));
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    };
+    resize();
+    window.addEventListener("resize", resize);
+
+    const analyser = getAnalyser();
+    // Reuse a single buffer across frames; size matches analyser.fftSize.
+    const buf = analyser ? new Uint8Array(analyser.fftSize) : null;
+
+    const render = () => {
+      const rect = canvas.getBoundingClientRect();
+      const w = rect.width;
+      const h = rect.height;
+      const midY = h / 2;
+
+      ctx.clearRect(0, 0, w, h);
+
+      // Background grid — faint horizontal center reference line.
+      ctx.strokeStyle = "rgba(167, 139, 250, 0.18)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(0, midY);
+      ctx.lineTo(w, midY);
+      ctx.stroke();
+
+      // Idle state — draw a gentle sine ripple so the canvas looks alive
+      // even when nothing is playing.
+      if (!active || !analyser || !buf) {
+        phaseRef.current += 0.03;
+        const phase = phaseRef.current;
+        ctx.strokeStyle = "rgba(167, 139, 250, 0.45)";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        for (let x = 0; x <= w; x += 2) {
+          const y = midY + Math.sin(x * 0.04 + phase) * 3 * Math.sin(phase * 0.5);
+          if (x === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+        rafRef.current = requestAnimationFrame(render);
+        return;
+      }
+
+      // Active state — read real time-domain samples and draw a glowing waveform.
+      analyser.getByteTimeDomainData(buf);
+
+      // Outer glow pass — wide, low-opacity amber stroke.
+      ctx.strokeStyle = "rgba(251, 191, 36, 0.35)";
+      ctx.lineWidth = 4;
+      ctx.lineJoin = "round";
+      ctx.beginPath();
+      const step = w / buf.length;
+      for (let i = 0; i < buf.length; i++) {
+        const v = (buf[i] - 128) / 128; // -1..1
+        const y = midY + v * (h * 0.42);
+        const x = i * step;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+
+      // Main pass — bright amber→rose gradient stroke.
+      const grad = ctx.createLinearGradient(0, 0, w, 0);
+      grad.addColorStop(0, "#fbbf24");
+      grad.addColorStop(0.5, "#fb7185");
+      grad.addColorStop(1, "#a78bfa");
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      for (let i = 0; i < buf.length; i++) {
+        const v = (buf[i] - 128) / 128;
+        const y = midY + v * (h * 0.42);
+        const x = i * step;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+
+      rafRef.current = requestAnimationFrame(render);
+    };
+    rafRef.current = requestAnimationFrame(render);
+
+    return () => {
+      window.removeEventListener("resize", resize);
+      cancelAnimationFrame(rafRef.current);
+    };
+  }, [active]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className="vinyl-waveform-canvas"
+      aria-label={active ? "Real-time audio waveform — currently active" : "Real-time audio waveform — idle"}
+      role="img"
+    />
   );
 }
 
@@ -528,6 +654,20 @@ export default function VinylPlayer() {
 
           <div className="mt-6 w-full">
             <Waveform active={playing && !paused} progress={progress} />
+          </div>
+
+          {/* Real-time audio waveform — canvas reads from the AnalyserNode
+              on the shared audio engine and reacts to actual sound. */}
+          <div className="mt-3 w-full">
+            <div className="mb-1.5 flex items-center justify-between px-1">
+              <span className="font-mono-elegant text-[0.55rem] uppercase tracking-[0.3em] text-violet-500/60">
+                ◆ live waveform
+              </span>
+              <span className={`font-mono-elegant text-[0.55rem] uppercase tracking-[0.2em] ${playing && !paused ? "text-emerald-500/80" : "text-stone-400/60"}`}>
+                {playing && !paused ? "● signal active" : "○ idle"}
+              </span>
+            </div>
+            <RealtimeWaveform active={playing && !paused} />
           </div>
 
           <div className="mt-5 flex w-full items-center gap-3">

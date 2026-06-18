@@ -27,6 +27,7 @@ const STAT_ITEMS: StatItem[] = [
   { key: "tracksPlayed", label: "tracks played", glyph: "♪", accent: "from-emerald-400 to-teal-400", accentClass: "accent-emerald" },
   { key: "candlesBlown", label: "candles blown", glyph: "🕯", accent: "from-amber-500 to-orange-400", accentClass: "accent-amber" },
   { key: "wishesSealed", label: "wishes sealed", glyph: "✸", accent: "from-rose-500 to-amber-400", accentClass: "accent-rose" },
+  { key: "lanternsReleased", label: "lanterns released", glyph: "🏮", accent: "from-amber-400 to-rose-500", accentClass: "accent-amber" },
   { key: "sparklesFired", label: "sparkles fired", glyph: "✧", accent: "from-sky-400 to-violet-400", accentClass: "accent-sky" },
 ];
 
@@ -189,7 +190,7 @@ export default function StatsFinale() {
     <section ref={sectionRef} className="relative px-4 py-28">
       <div className="mx-auto max-w-4xl">
         <SectionHeader
-          number="07"
+          number="08"
           eyebrow="your birthday, in numbers"
           accent="violet"
           subtitleMaxWidth="max-w-md"

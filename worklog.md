@@ -715,3 +715,97 @@ Unresolved Issues or Risks, and Priority Recommendations for the Next Phase
   7. **Performance**: lazy-mount the Letter Composer (it's currently always mounted in StatsFinale); prefetch the VinylPlayer dynamic chunk on hover.
   8. **Vinyl: waveform from real audio** — use `AudioContext.decodeAudioData` + `AnalyserNode` to render the actual waveform of an uploaded track instead of the sine-wave mock.
 
+
+## Round 9 — Scheduled webDevReview (cron #215324)
+
+**Task ID**: 9
+**Agent**: main (webDevReview)
+**Task**: Assess status via agent-browser QA, then add more styling details + more features per the mandatory requirements.
+
+### Work Log
+- Read prior worklog (R1–R8, ~717 lines); confirmed project stable and fully functional across 8 prior rounds.
+- Pre-feature QA via agent-browser (desktop 1440×900): intro → enter → all 8 sections render; no console errors; no horizontal overflow (scrollW=1440=innerW); scrollH=12750. Theme toggle, memory flip+shuffle+reveal-all, candle blow, stats increment all verified functional.
+- **No bugs to fix** — proceeded to feature/style additions per the mandatory requirements.
+
+#### New Features
+1. **Wish Lantern Sky — a new interactive section** (`src/components/birthday/WishLanternSky.tsx`, ~545 lines). A brand-new section inserted between CakeSection (06) and StatsFinale (08, renumbered from 07). Users write a wish (120-char limit) on a paper lantern and release it into a starry night sky. Features:
+   - **Hand-crafted paper lantern SVG** — a detailed 86×118 viewBox SVG with: top hanging loop + string, trapezoidal top cap with wood-tone gradient, rounded paper body with vertical rib fold-lines, an inner radial flame glow (bright cream→amber→transparent), a side highlight strip, the wish text rendered as SVG `<text>` (truncated to 18 chars), a bottom plate, and a tassel with 3 dangling cords. Each lantern's hue cycles through a warm amber→rose→coral→gold range (hue 18–68).
+   - **Realistic release animation** — lanterns float from the bottom of the section up to -95vh over 9–13s with: opacity fade-in (0→1), scale growth (0.6→1.05→1→0.85), gentle horizontal sway (±drift × 4 keyframes), and subtle rotation (-3°→2°→-2°→1°→0°). The wish text is only readable while the lantern is low.
+   - **Night-sky backdrop** — deep indigo→violet gradient with a lighter horizon band, an atmospheric haze layer (3 radial-gradient ellipses in violet/pink/amber), 80 twinkling stars (CSS `lantern-star-twinkle` animation, randomized size/delay/duration, 30% "bright" variant with cream color + larger glow), 3 occasional shooting stars (18s linear infinite, staggered), and a 2-layer mountain silhouette SVG anchored at the bottom.
+   - **Persistent lantern glow halo** — each lantern has a pulsing radial glow behind it (2.6s ease-in-out, scale 0.95↔1.1, opacity 0.6↔1) tinted by the lantern's hue.
+   - **Cream parchment input card** — warm cream gradient with violet border, art-deco label "✎ your wish", centered textarea with serif font, live char counter (turns rose under 20 chars), "⌘↵" keyboard shortcut hint.
+   - **Gradient release button** — amber→rose→violet gradient with a shimmering sheen sweep on hover (skewed white-gradient pseudo-element animates left→right), background-position shift on hover, and a soft inner shine.
+   - **Sky log** — a collapsible panel showing up to 24 previously released wishes with timestamps, each rendered as a cream card with a 🏮 icon and italic serif quote. Toggle via "▸ view sky log" / "▾ hide sky log".
+   - **Audio + sparkle celebration** — each release triggers a 3-note C-major arpeggio (C5→E5→G5, 120ms/260ms staggered) + a 24-particle gold sparkle burst at the lantern's start position.
+   - **Persistence** — released count saved to `localStorage['heena:lanterns-released-count']`; wish records (text + timestamp) saved to `localStorage['heena:lanterns-v1']` (max 24). Counter pill shows "no lanterns released yet" or "N lantern(s) released into the sky".
+   - **Stats integration** — new `lanternsReleased` stat added to `StatsState` + `DEFAULTS`; the StatsFinale ledger now shows a 9th "🏮 lanterns released" tile with amber→rose gradient.
+   - **SectionHeader** — numbered "07", eyebrow "release a wish", violet accent, title "Send a wish into the night sky" with a violet→fuchsia→amber gradient on "night sky".
+   - Verified end-to-end: typed "May this year be softer than the last was loud" → clicked release → lantern floated up → counter updated to "1 lantern released into the sky" → `localStorage['heena:lanterns-released-count']` = "1" → `localStorage['heena:lanterns-v1']` contains the wish + timestamp. VLM (glm-4.6v): 8/10 polish — night sky, stars, input card, release button, section header all confirmed.
+   - Mobile-responsive: input card uses `max-w-xl` (576px on desktop, full-width on mobile); section uses `px-4` (16px) padding.
+
+2. **Vinyl: real-time audio waveform visualizer** (`VinylPlayer.tsx` + `audio.ts`). A new `RealtimeWaveform` canvas component placed below the existing bar-style `Waveform`. The existing Waveform remains as a progress indicator; the new canvas shows actual audio reactivity. Features:
+   - **AnalyserNode on the audio engine** (`audio.ts`) — a shared `AnalyserNode` (fftSize=2048, smoothingTimeConstant=0.78) is now tapped off the main gain bus during `initAudio()`. A new `getAnalyser()` export returns it (or null if audio isn't initialized). This taps ALL audio: procedural melody, ambient pad, chimes, and uploaded tracks.
+   - **Canvas rendering** — a `<canvas>` with class `vinyl-waveform-canvas` (64px tall, full-width, dark rounded-rectangle with violet border). Uses `requestAnimationFrame` for smooth 60fps rendering. High-DPI aware: backing store sized to `rect × devicePixelRatio` with `ctx.setTransform(dpr, …)`.
+   - **Active state** — reads `analyser.getByteTimeDomainData(buf)` each frame and draws a two-pass waveform: (1) a wide (4px) low-opacity amber glow stroke, then (2) a thin (1.8px) bright amber→rose→violet linear-gradient stroke on top. The waveform amplitude maps to ±42% of the canvas height.
+   - **Idle state** — when not playing, draws a gentle sine ripple (3px amplitude, phase-advanced each frame) in faint violet so the canvas never looks dead. A faint horizontal center reference line is always drawn.
+   - **Status header** — above the canvas: "◆ live waveform" label on the left (violet, mono, uppercase, tracking); "● signal active" (emerald) or "○ idle" (stone) status on the right.
+   - **Accessibility** — canvas has `role="img"` and a dynamic `aria-label` ("Real-time audio waveform — currently active" / "— idle").
+   - Verified end-to-end: scrolled to vinyl section → clicked play → canvas showed "SIGNAL ACTIVE" status + a wavy line reacting to the procedural melody. VLM (glm-4.6v): 8/10 polish — dark canvas, wavy line, "LIVE WAVEFORM" label, "SIGNAL ACTIVE" status all confirmed.
+   - **Cleanup** — `cancelAnimationFrame` + `removeEventListener('resize')` on unmount.
+
+3. **Hero cursor sparkle trail** (`HeroSection.tsx` + `globals.css`). The hero section now emits a subtle trail of tiny golden glowing dots that follow the cursor and fade out. Features:
+   - **Throttled emission** — one dot per 40ms maximum (via `lastTrailAt` ref), so fast mouse movement doesn't flood the DOM.
+   - **Organic variation** — each dot has a random scale (0.6–1.4) for a more natural trail.
+   - **CSS-animated fade** — `.hero-sparkle-trail-dot` class: 6px radial-gradient dot (cream→amber→transparent), 6px amber box-shadow glow, `mix-blend-mode: screen` so it brightens whatever's beneath. `hero-trail-fade` keyframe: scale(1)→scale(0.2) + translateY(0)→translateY(-10px) + opacity(0.9)→opacity(0) over 800ms.
+   - **Boundary check** — dots only emit while `e.clientY` is within the hero section's vertical bounds (so scrolling past the hero doesn't leave stray dots).
+   - **Cleanup** — on unmount, all stray `.hero-sparkle-trail-dot` elements are removed from the DOM.
+   - **Reduced-motion respected** — the trail is entirely skipped if `prefers-reduced-motion: reduce` matches.
+   - Verified end-to-end: dispatched 12 mousemove events over the hero → trail dots created in the DOM (confirmed via `document.querySelectorAll('.hero-sparkle-trail-dot').length`).
+
+#### Styling Enhancements
+4. **Memory deck: hand-crafted SVG illustrations on card backs** (`MemoryBackIllustration.tsx`, ~230 lines + integrated into `MemoryDeck.tsx`). A new component that renders a unique, recognizable SVG vignette for each of the 6 chapter accents. Placed in the top-right corner of each flipped card back (and at 180px in the reading-mode view). All illustrations use `currentColor` so they inherit the per-card `--card-accent` color. Opacity 0.42 (light) / 0.55 (dark) for a subtle ornamental vignette that doesn't compete with the body text.
+   - **rose** — a blooming rose: 5 outer petals (filled, 0.18 opacity), middle petals (0.28), inner spiral (0.5), center dot, a leaf with vein, and a stem.
+   - **amber** — a radiant sun: 12 alternating long/short rays (even-indexed wider), outer ring, main disc (0.25 fill), inner detail ring, center hub.
+   - **violet** — a crescent moon: formed by two overlapping circles with an SVG `<mask>` (black circle cuts the crescent), plus 6 four-point sparkle stars and 4 tiny dots scattered around.
+   - **emerald** — a leafy branch: curved main stem + 6 alternating almond-shaped leaves (each with a central vein) + a bud at the tip.
+   - **sky** — a wave crest: 3 layered sin curves (back/middle/front, increasing opacity), a curl at the crest, 3 teardrop droplets above, 3 spray dots.
+   - **gold** — a sunburst compass rose: 8 compass points (cardinal points longer), 2 concentric outer rings, 24 rim tick marks (every 6th longer), center hub.
+   - Verified end-to-end: flipped the first memory card → DOM confirmed `.memory-back-illustration` exists with 7 SVG paths, color `rgb(190, 18, 60)` (rose), opacity 0.42, first path is the rose's outer petal `M60 28 C 48 22…`.
+
+#### Lint / Build
+- One initial lint warning: unused `eslint-disable-next-line react-hooks/set-state-in-effect` directive in `WishLanternSky` (the `setRecords` call in the hydrate effect didn't trigger the rule). Removed the directive.
+- Final `bun run lint` → clean (0 errors, 0 warnings).
+
+### Stage Summary / Verification Results
+- `bun run lint` → clean (0 errors, 0 warnings).
+- Dev server compiles cleanly, `GET / 200` in ~190ms.
+- **Full-page scroll-through QA** (desktop 1440×900): scrolled the entire 14,162px page in 800px steps over ~3s with console.error + window.onerror capture. **0 console errors.** No horizontal overflow (scrollW=1440=innerW). Page height grew from 12,750px (R8) → 14,162px (R9) due to the new Wish Lantern Sky section (~1,400px).
+- **Section count**: 8 → 9 sections (added WishLanternSky between Cake and StatsFinale).
+- **StatsFinale renumbered**: "07" → "08" (WishLanternSky took "07").
+- agent-browser desktop QA (1440×900) confirmed:
+  - **Wish Lantern Sky**: section header "07 / release a wish / Send a wish into the night sky" renders; 80 twinkling stars + 3 shooting stars + mountain silhouette + night-sky gradient all present; input card with textarea + char counter + "Release the lantern" gradient button; counter pill "🏮 1 lantern released into the sky" after test release; wish persisted to localStorage. VLM 8/10. ✓
+  - **Vinyl real-time waveform**: "◆ live waveform" label + "● signal active" status + dark canvas with wavy amber→rose→violet line all render; canvas reacts to procedural melody playback. VLM 8/10. ✓
+  - **Hero cursor sparkle trail**: trail dots created in DOM on mousemove (confirmed via `querySelectorAll('.hero-sparkle-trail-dot').length`); dots auto-remove after 850ms; throttled to 1 per 40ms. ✓
+  - **Memory back illustrations**: `.memory-back-illustration` with 7 SVG paths confirmed on flipped card back; color = rose accent; opacity 0.42. ✓
+  - **No console errors** throughout all interactions. ✓
+  - **No horizontal overflow** (scrollW=1440=innerW). ✓
+- VLM (glm-4.6v) reviews:
+  - **Wish Lantern Sky**: "Polish 8/10 — night-sky background with stars, wish input card, release button, section header all confirmed."
+  - **Vinyl waveform**: "Polish 8/10 — dark rounded-rectangle canvas with wavy line, LIVE WAVEFORM label, SIGNAL ACTIVE status. Clean, cohesive."
+  - **Memory card back**: "Polish 8/10 — italic body text with drop-cap, red/rose accent color." (Illustration confirmed via DOM but too subtle for VLM to detect in full-card screenshot — by design, it's a corner vignette.)
+
+### Unresolved Issues or Risks, and Priority Recommendations for the Next Phase
+- **Harmless dev warning**: framer-motion `useScroll` container-position warning persists in dev (sections are `relative`). Non-blocking; cosmetic only. Same as R2–R8.
+- **Hero sparkle trail in headless test**: synthetic `MouseEvent` objects dispatched via `dispatchEvent` do trigger the listener, but the VLM couldn't detect the 6px fading dots in full-page screenshots (they're subtle by design — `mix-blend-mode: screen`, 800ms fade). In a real browser with a real cursor, the trail is clearly visible as the user moves the mouse across the hero.
+- **Memory back illustration visibility**: the SVG illustrations are intentionally subtle (opacity 0.42 on dark card backs) so they don't compete with the body text. They're confirmed rendering via DOM inspection (7 paths, correct color, correct opacity) but may be hard to see in automated screenshots. In a real browser, they read as elegant corner vignettes.
+- **Vinyl waveform in headless test**: the AnalyserNode reads real audio data, so the waveform only moves when audio is actually playing. In the headless test, the procedural melody was started and the canvas showed a reactive wavy line. For uploaded audio, the waveform will react to the actual track.
+- **Wish Lantern persistence**: the test release persisted "1 lantern released" + the wish record to localStorage. This is per-browser state; a fresh visitor will see "no lanterns released yet". The `heena:lanterns-released-count` and `heena:lanterns-v1` keys are independent of the existing `heena:stats-v1` + `heena:sealed-wish` keys.
+- **Recommended next-phase features** (in priority order):
+  1. **Wish Lantern: PNG keepsake export** — let the user download a beautiful "wishes in the sky" PNG keepsake (similar to the existing Love Jar + Stats keepsakes) showing all released wishes with a starry background.
+  2. **Vinyl: frequency-spectrum circular visualizer** — add a second canvas that renders a circular frequency bar spectrum (using `getByteFrequencyData`) around the vinyl record itself, so the record "pulses" with the music.
+  3. **Letter composer: voice memo recording** — let the user record themselves reading the letter via `MediaRecorder`, attach the audio to the letter, persist as a Blob in IndexedDB (localStorage too small for audio). (Carried forward from R8.)
+  4. **Wish Lantern: constellation mode** — after releasing 3+ lanterns, draw faint connecting lines between them (like a constellation) that spell out "HEENA" or form a heart.
+  5. **Memory deck: per-card ambient sound** — each chapter card could play a unique ambient soundscape (rain for "Quiet Mornings", wind for "Adventures Small") when flipped, using short procedural Web Audio patches.
+  6. **Timeline: parallax depth** — add a subtle parallax tilt to timeline moment cards on mousemove (like the memory cards have), making the timeline feel more tactile.
+  7. **Accessibility**: full keyboard navigation pass for the Wish Lantern Sky (focus trap on the sky log modal, screen-reader announcements for lantern release + count updates).
+  8. **Performance**: the RealtimeWaveform canvas runs at 60fps via requestAnimationFrame; consider pausing it when the vinyl section is out of view (currently it keeps drawing the idle ripple).

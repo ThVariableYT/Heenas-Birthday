@@ -4,6 +4,7 @@ let audioCtx: AudioContext | null = null;
 let mainGain: GainNode | null = null;
 let delayNode: DelayNode | null = null;
 let feedbackNode: GainNode | null = null;
+let analyserNode: AnalyserNode | null = null;
 let ambientNodes: { osc: OscillatorNode; gain: GainNode }[] = [];
 let ambientActive = false;
 let proceduralInterval: ReturnType<typeof setInterval> | null = null;
@@ -23,14 +24,32 @@ export function initAudio() {
     feedbackNode = audioCtx.createGain();
     feedbackNode.gain.setValueAtTime(0.25, audioCtx.currentTime);
 
+    // AnalyserNode — taps the main gain bus so any component can render a
+    // real-time waveform / frequency spectrum. FFT size 2048 gives a good
+    // time-domain resolution for waveform display.
+    analyserNode = audioCtx.createAnalyser();
+    analyserNode.fftSize = 2048;
+    analyserNode.smoothingTimeConstant = 0.78;
+
     mainGain.connect(audioCtx.destination);
     mainGain.connect(delayNode);
     delayNode.connect(feedbackNode);
     feedbackNode.connect(delayNode);
     delayNode.connect(audioCtx.destination);
+    // Tap the analyser off the main bus (post-gain, pre-destination).
+    mainGain.connect(analyserNode);
   } catch {
     // no-op
   }
+}
+
+/**
+ * Returns the shared AnalyserNode, or null if audio hasn't been initialized.
+ * Components can call `getAnalyser()?.getByteTimeDomainData(buf)` to render
+ * a real-time waveform that reacts to all audio passing through the engine.
+ */
+export function getAnalyser(): AnalyserNode | null {
+  return analyserNode;
 }
 
 export function setMasterVolume(v: number) {

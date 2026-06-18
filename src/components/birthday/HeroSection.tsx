@@ -28,19 +28,48 @@ const CONSTELLATION = [
 
 export default function HeroSection() {
   const ref = useRef<HTMLDivElement>(null);
+  const lastTrailAt = useRef(0);
 
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
+
+    // Respect reduced-motion preference — skip the trail entirely.
+    const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
     const handleMove = (e: MouseEvent) => {
       const rect = el.getBoundingClientRect();
       const x = (e.clientX - rect.left) / rect.width - 0.5;
       const y = (e.clientY - rect.top) / rect.height - 0.5;
       el.style.setProperty("--px", `${x * 30}px`);
       el.style.setProperty("--py", `${y * 30}px`);
+
+      // Cursor sparkle trail — throttle to ~1 dot per 40ms, only while
+      // the cursor is within the hero section's vertical bounds.
+      if (prefersReduced) return;
+      const now = performance.now();
+      if (now - lastTrailAt.current < 40) return;
+      lastTrailAt.current = now;
+
+      // Only emit trail dots while the cursor is actually inside the hero.
+      if (e.clientY < rect.top || e.clientY > rect.bottom) return;
+
+      const dot = document.createElement("span");
+      dot.className = "hero-sparkle-trail-dot";
+      dot.style.left = `${e.clientX - 3}px`;
+      dot.style.top = `${e.clientY - 3}px`;
+      // Slight size + hue variation for a more organic trail.
+      const scale = 0.6 + Math.random() * 0.8;
+      dot.style.transform = `scale(${scale})`;
+      document.body.appendChild(dot);
+      window.setTimeout(() => dot.remove(), 850);
     };
     el.addEventListener("mousemove", handleMove);
-    return () => el.removeEventListener("mousemove", handleMove);
+    return () => {
+      el.removeEventListener("mousemove", handleMove);
+      // Clean up any stray trail dots on unmount.
+      document.querySelectorAll(".hero-sparkle-trail-dot").forEach((d) => d.remove());
+    };
   }, []);
 
   const burst = () => {

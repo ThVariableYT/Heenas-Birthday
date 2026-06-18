@@ -20,6 +20,7 @@ export type StatsState = {
   tracksPlayed: number;
   candlesBlown: number;
   wishesSealed: number;
+  lanternsReleased: number;
   sparklesFired: number;
   lastVisit: number | null;
 };
@@ -34,6 +35,7 @@ const DEFAULTS: StatsState = {
   tracksPlayed: 0,
   candlesBlown: 0,
   wishesSealed: 0,
+  lanternsReleased: 0,
   sparklesFired: 0,
   lastVisit: null,
 };

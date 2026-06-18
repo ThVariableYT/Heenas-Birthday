@@ -7,6 +7,7 @@ import { sparkle } from "./SparkleCanvas";
 import { playChime } from "@/lib/audio";
 import { useStatsStore } from "@/lib/stats-store";
 import SectionHeader from "./SectionHeader";
+import MemoryBackIllustration from "./MemoryBackIllustration";
 
 const FAV_KEY = "heena:memory-favorites";
 const REVEALED_KEY = "heena:memory-revealed";
@@ -184,6 +185,9 @@ function MemoryCardItem({
 
             {/* Per-card texture pattern — rose petals / sunbeams / starfield / etc. */}
             <div className={`memory-back-pattern ${card.glyphAccent}`} aria-hidden />
+
+            {/* Hand-crafted SVG illustration — a unique vignette per chapter */}
+            <MemoryBackIllustration accent={card.glyphAccent} size={120} />
 
             {/* Decorative quote marks flanking the body */}
             <span className="memory-back-quote-mark pointer-events-none absolute left-4 top-4" aria-hidden>&ldquo;</span>
@@ -610,6 +614,9 @@ export default function MemoryDeck() {
 
               {/* Per-card accent texture pattern overlay */}
               <div className={`memory-back-pattern ${memoryCards[readingIndex].glyphAccent}`} aria-hidden />
+
+              {/* Hand-crafted SVG illustration — a unique vignette per chapter */}
+              <MemoryBackIllustration accent={memoryCards[readingIndex].glyphAccent} size={180} />
 
               {/* Top label + counter */}
               <div className="mb-6 flex items-center justify-between">

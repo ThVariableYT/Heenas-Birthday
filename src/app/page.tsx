@@ -21,6 +21,7 @@ import KeyboardShortcuts from "@/components/birthday/KeyboardShortcuts";
 import FilmGrainOverlay from "@/components/birthday/FilmGrainOverlay";
 import SectionDivider from "@/components/birthday/SectionDivider";
 import ScrollSpy from "@/components/birthday/ScrollSpy";
+import WishLanternSky from "@/components/birthday/WishLanternSky";
 import { initAudio, resumeAudio, startAmbientPad } from "@/lib/audio";
 
 const TimelineSection = dynamic(() => import("@/components/birthday/TimelineSection"));
@@ -88,6 +89,8 @@ export default function Home() {
             <SectionDivider index={4} />
             <CakeSection />
             <SectionDivider index={5} />
+            <WishLanternSky />
+            <SectionDivider index={6} />
             <StatsFinale />
             <Footer />
           </motion.main>

@@ -2241,3 +2241,230 @@ kbd {
 /* Dark-mode adjustments for letter (kept warm) */
 .dark .letter-stage { background: radial-gradient(circle at 25% 25%, rgba(120, 53, 15, 0.5), transparent 55%), radial-gradient(circle at 75% 75%, rgba(225, 29, 72, 0.4), transparent 60%), rgba(10, 6, 12, 0.85); }
 
+/* ============================================================ */
+/*  Round 9 — Wish Lantern Sky section                          */
+/* ============================================================ */
+
+/* The night-sky backdrop — deep indigo→violet gradient, slightly lighter
+   at the horizon so the distant mountains read as silhouettes. */
+.lantern-sky-section {
+  background:
+    radial-gradient(ellipse at 50% 110%, rgba(76, 29, 149, 0.18) 0%, transparent 55%),
+    linear-gradient(180deg, #0a0820 0%, #150d33 40%, #1e1442 70%, #281a52 100%);
+  isolation: isolate;
+}
+.dark .lantern-sky-section {
+  background:
+    radial-gradient(ellipse at 50% 110%, rgba(76, 29, 149, 0.28) 0%, transparent 55%),
+    linear-gradient(180deg, #050310 0%, #0d0822 40%, #150d33 70%, #1d1244 100%);
+}
+
+/* Soft atmospheric haze band near the horizon */
+.lantern-sky-backdrop {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 80% 30% at 50% 85%, rgba(167, 139, 250, 0.18) 0%, transparent 70%),
+    radial-gradient(ellipse 60% 20% at 30% 75%, rgba(244, 114, 182, 0.10) 0%, transparent 70%),
+    radial-gradient(ellipse 60% 20% at 70% 80%, rgba(251, 191, 36, 0.10) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+/* Twinkling starfield */
+.lantern-stars-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.lantern-star {
+  position: absolute;
+  border-radius: 9999px;
+  background: #fff;
+  box-shadow: 0 0 4px rgba(255, 255, 255, 0.8);
+  animation: lantern-star-twinkle 3s ease-in-out infinite;
+  opacity: 0.6;
+}
+.lantern-star.bright {
+  background: #fff7d6;
+  box-shadow: 0 0 6px rgba(255, 247, 214, 0.9), 0 0 12px rgba(255, 247, 214, 0.4);
+  animation-duration: 2.4s;
+}
+@keyframes lantern-star-twinkle {
+  0%, 100% { opacity: 0.3; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+
+/* Shooting star — a thin bright streak that flashes across occasionally */
+.lantern-shooting-star {
+  position: absolute;
+  width: 120px;
+  height: 1.5px;
+  background: linear-gradient(90deg, transparent, #fff7d6, transparent);
+  border-radius: 9999px;
+  opacity: 0;
+  animation: lantern-shooting 18s linear infinite;
+  pointer-events: none;
+}
+@keyframes lantern-shooting {
+  0% { opacity: 0; transform: translateX(-100px) translateY(0) rotate(-25deg); }
+  3% { opacity: 1; }
+  8% { opacity: 0; transform: translateX(300px) translateY(-80px) rotate(-25deg); }
+  100% { opacity: 0; }
+}
+
+/* Distant mountain silhouettes anchored at the bottom */
+.lantern-mountains {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 120px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* The lantern SVG wrapper + its outer glow halo */
+.lantern-svg-wrap {
+  position: relative;
+  display: inline-block;
+  filter: drop-shadow(0 0 8px rgba(251, 191, 36, 0.4));
+}
+.lantern-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 180px;
+  height: 180px;
+  transform: translate(-50%, -50%);
+  border-radius: 9999px;
+  filter: blur(18px);
+  animation: lantern-glow-pulse 2.6s ease-in-out infinite;
+  pointer-events: none;
+  z-index: -1;
+}
+@keyframes lantern-glow-pulse {
+  0%, 100% { opacity: 0.6; transform: translate(-50%, -50%) scale(0.95); }
+  50% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+}
+.lantern-svg {
+  display: block;
+  position: relative;
+  z-index: 1;
+}
+
+/* The wish-input card — cream parchment with violet edges */
+.lantern-input-card {
+  background: linear-gradient(180deg, rgba(255, 251, 240, 0.92) 0%, rgba(252, 240, 220, 0.88) 100%);
+  border-radius: 24px;
+  padding: 28px 24px 24px;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.6) inset,
+    0 24px 60px -20px rgba(76, 29, 149, 0.4),
+    0 8px 24px -8px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(167, 139, 250, 0.3);
+}
+.dark .lantern-input-card {
+  background: linear-gradient(180deg, rgba(30, 20, 50, 0.85) 0%, rgba(20, 14, 36, 0.85) 100%);
+  border-color: rgba(167, 139, 250, 0.4);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.05) inset,
+    0 24px 60px -20px rgba(76, 29, 149, 0.6),
+    0 8px 24px -8px rgba(0, 0, 0, 0.5);
+}
+.lantern-wish-input {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.7) 0%, rgba(255, 252, 245, 0.5) 100%);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.5) inset;
+}
+.dark .lantern-wish-input {
+  background: rgba(15, 10, 28, 0.6);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset;
+}
+
+/* The release button — already a gradient; add a soft inner shine + hover sheen */
+.lantern-release-btn {
+  position: relative;
+  overflow: hidden;
+  background-size: 200% 100%;
+  background-position: 0% 50%;
+  transition: background-position 0.6s ease, box-shadow 0.3s ease;
+}
+.lantern-release-btn:not(:disabled):hover {
+  background-position: 100% 50%;
+  box-shadow: 0 12px 32px -8px rgba(244, 63, 94, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.15) inset;
+}
+.lantern-release-btn::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -120%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+  transform: skewX(-20deg);
+  transition: left 0.7s ease;
+  pointer-events: none;
+}
+.lantern-release-btn:not(:disabled):hover::after {
+  left: 130%;
+}
+
+/* The floating-lantern stage — full-section overlay; lanterns rise from bottom */
+.lantern-sky-stage {
+  z-index: 5;
+}
+.lantern-floating {
+  transform-origin: center bottom;
+  will-change: transform, opacity;
+}
+
+/* Sky log panel */
+.lantern-sky-log {
+  box-shadow: 0 12px 32px -16px rgba(76, 29, 149, 0.3);
+}
+
+/* Reduced motion — neutralize the most distracting animations */
+@media (prefers-reduced-motion: reduce) {
+  .lantern-star { animation: none; opacity: 0.7; }
+  .lantern-star.bright { animation: none; }
+  .lantern-shooting-star { animation: none; opacity: 0; }
+  .lantern-glow { animation: none; opacity: 0.7; }
+  .lantern-release-btn { transition: none; }
+  .lantern-release-btn::after { display: none; }
+}
+
+/* ============================================================ */
+/*  Round 9 — Hero cursor sparkle trail                          */
+/* ============================================================ */
+.hero-sparkle-trail-dot {
+  position: fixed;
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  pointer-events: none;
+  z-index: 60;
+  background: radial-gradient(circle, rgba(255, 215, 120, 0.95) 0%, rgba(251, 191, 36, 0.4) 50%, transparent 70%);
+  box-shadow: 0 0 6px rgba(251, 191, 36, 0.6);
+  animation: hero-trail-fade 800ms ease-out forwards;
+  mix-blend-mode: screen;
+}
+@keyframes hero-trail-fade {
+  0% { transform: scale(1) translate(0, 0); opacity: 0.9; }
+  60% { opacity: 0.5; }
+  100% { transform: scale(0.2) translate(0, -10px); opacity: 0; }
+}
+
+/* ============================================================ */
+/*  Round 9 — Vinyl real-time waveform canvas                   */
+/* ============================================================ */
+.vinyl-waveform-canvas {
+  width: 100%;
+  height: 64px;
+  display: block;
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(15, 10, 28, 0.6) 0%, rgba(30, 20, 50, 0.4) 100%);
+  border: 1px solid rgba(167, 139, 250, 0.2);
+}
+.dark .vinyl-waveform-canvas {
+  background: linear-gradient(180deg, rgba(10, 6, 18, 0.7) 0%, rgba(20, 14, 36, 0.5) 100%);
+}
+
