@@ -7,24 +7,26 @@ import { sparkle } from "./SparkleCanvas";
 import { playChime } from "@/lib/audio";
 import StatsExportCard from "./StatsExportCard";
 import SectionHeader from "./SectionHeader";
+import PoemComposer from "./PoemComposer";
 
 type StatItem = {
   key: keyof ReturnType<typeof useStatsStore.getState>["stats"];
   label: string;
   glyph: string;
   accent: string;
+  accentClass: string;
   suffix?: string;
 };
 
 const STAT_ITEMS: StatItem[] = [
-  { key: "memoriesRevealed", label: "memories revealed", glyph: "✦", accent: "from-amber-400 to-rose-400", suffix: "/6" },
-  { key: "favoritesPinned", label: "favorites pinned", glyph: "♥", accent: "from-rose-400 to-pink-400" },
-  { key: "thoughtsKept", label: "thoughts kept", glyph: "❋", accent: "from-amber-400 to-yellow-400" },
-  { key: "complimentsPlucked", label: "compliments plucked", glyph: "✺", accent: "from-violet-400 to-fuchsia-400" },
-  { key: "tracksPlayed", label: "tracks played", glyph: "♪", accent: "from-emerald-400 to-teal-400" },
-  { key: "candlesBlown", label: "candles blown", glyph: "🕯", accent: "from-amber-500 to-orange-400" },
-  { key: "wishesSealed", label: "wishes sealed", glyph: "✸", accent: "from-rose-500 to-amber-400" },
-  { key: "sparklesFired", label: "sparkles fired", glyph: "✧", accent: "from-sky-400 to-violet-400" },
+  { key: "memoriesRevealed", label: "memories revealed", glyph: "✦", accent: "from-amber-400 to-rose-400", accentClass: "accent-amber", suffix: "/6" },
+  { key: "favoritesPinned", label: "favorites pinned", glyph: "♥", accent: "from-rose-400 to-pink-400", accentClass: "accent-rose" },
+  { key: "thoughtsKept", label: "thoughts kept", glyph: "❋", accent: "from-amber-400 to-yellow-400", accentClass: "accent-gold" },
+  { key: "complimentsPlucked", label: "compliments plucked", glyph: "✺", accent: "from-violet-400 to-fuchsia-400", accentClass: "accent-violet" },
+  { key: "tracksPlayed", label: "tracks played", glyph: "♪", accent: "from-emerald-400 to-teal-400", accentClass: "accent-emerald" },
+  { key: "candlesBlown", label: "candles blown", glyph: "🕯", accent: "from-amber-500 to-orange-400", accentClass: "accent-amber" },
+  { key: "wishesSealed", label: "wishes sealed", glyph: "✸", accent: "from-rose-500 to-amber-400", accentClass: "accent-rose" },
+  { key: "sparklesFired", label: "sparkles fired", glyph: "✧", accent: "from-sky-400 to-violet-400", accentClass: "accent-sky" },
 ];
 
 /**
@@ -101,12 +103,19 @@ function StatCard({ item, value, index }: { item: StatItem; value: number; index
         ref={ref}
         onPointerMove={handleMove}
         onPointerLeave={handleLeave}
-        className="stat-tilt-surface glass-card group relative overflow-hidden rounded-2xl p-5 text-center"
+        className={`stat-tilt-surface glass-card group relative overflow-hidden rounded-2xl p-5 text-center ${item.accentClass}`}
         style={{ transform: `rotateX(${tilt.rx}deg) rotateY(${tilt.ry}deg)` }}
       >
         <div
           className={`pointer-events-none absolute -right-4 -top-4 h-16 w-16 rounded-full bg-gradient-to-br ${item.accent} opacity-15 blur-2xl transition-opacity group-hover:opacity-30`}
         />
+        {/* Constellation hover dots — tiny connecting stars above the card on hover */}
+        <div className="stat-constellation" aria-hidden>
+          <span className="dot" />
+          <span className="dot" />
+          <span className="dot" />
+          <span className="dot" />
+        </div>
         {/* Edge sheen — appears on tilt */}
         <div
           className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 transition-opacity duration-300 group-hover:opacity-100"
@@ -114,22 +123,22 @@ function StatCard({ item, value, index }: { item: StatItem; value: number; index
             background: `linear-gradient(${135 + tilt.ry * 2}deg, transparent 40%, rgba(255,255,255,0.18) 50%, transparent 60%)`,
           }}
         />
-        <div className="mb-1 text-lg text-amber-500/70" style={{ transform: "translateZ(20px)" }}>
+        <div className="mb-1 text-lg" style={{ color: "var(--card-accent)", transform: "translateZ(20px)" }}>
           {item.glyph}
         </div>
         <div
-          className="font-serif-elegant text-3xl font-bold text-stone-800 sm:text-4xl"
+          className="font-serif-elegant text-3xl font-bold text-stone-800 sm:text-4xl dark:text-amber-50"
           style={{ transform: "translateZ(30px)" }}
         >
           <span className={`bg-gradient-to-br ${item.accent} bg-clip-text text-transparent`}>
             <AnimatedNumber value={value} />
           </span>
           {item.suffix && (
-            <span className="font-mono-elegant text-base text-stone-400">{item.suffix}</span>
+            <span className="font-mono-elegant text-base text-stone-400 dark:text-amber-200/50">{item.suffix}</span>
           )}
         </div>
         <div
-          className="mt-1 font-mono-elegant text-[0.55rem] uppercase tracking-[0.2em] text-stone-500"
+          className="mt-1 font-mono-elegant text-[0.55rem] uppercase tracking-[0.2em] text-stone-500 dark:text-amber-200/60"
           style={{ transform: "translateZ(15px)" }}
         >
           {item.label}
@@ -143,6 +152,7 @@ export default function StatsFinale() {
   const { stats, reset } = useStatsStore();
   const sectionRef = useRef<HTMLElement>(null);
   const [showReset, setShowReset] = useState(false);
+  const [poemOpen, setPoemOpen] = useState(false);
 
   const handleCelebrate = (e: React.MouseEvent) => {
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
@@ -194,16 +204,20 @@ export default function StatsFinale() {
         />
 
         <motion.div
-          className="grid grid-cols-2 gap-3 sm:grid-cols-4"
+          className="relative grid grid-cols-2 gap-3 sm:grid-cols-4"
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           viewport={{ once: true, margin: "-60px" }}
           transition={{ duration: 0.6 }}
         >
+          {/* Radial spotlight bloom behind the stat grid */}
+          <div className="stats-spotlight" aria-hidden />
           {STAT_ITEMS.map((item, i) => {
             const value = stats[item.key] as number;
             return (
-              <StatCard key={item.key} item={item} value={value} index={i} />
+              <div key={item.key} className="relative z-10">
+                <StatCard item={item} value={value} index={i} />
+              </div>
             );
           })}
         </motion.div>
@@ -215,19 +229,39 @@ export default function StatsFinale() {
           viewport={{ once: true }}
           transition={{ duration: 0.6, delay: 0.3 }}
         >
-          <motion.button
-            onClick={handleCelebrate}
-            className="group relative inline-flex items-center gap-2 overflow-hidden rounded-full bg-gradient-to-r from-amber-500 to-rose-500 px-7 py-3 text-sm font-semibold text-white shadow-lg shadow-rose-500/20"
-            whileHover={{ scale: 1.04 }}
-            whileTap={{ scale: 0.97 }}
-          >
-            <span className="relative z-10 flex items-center gap-2">
-              <span>✦</span>
-              <span>Celebrate once more</span>
-              <span>✦</span>
-            </span>
-            <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/40 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
-          </motion.button>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <motion.button
+              onClick={handleCelebrate}
+              className="group relative inline-flex items-center gap-2 overflow-hidden rounded-full bg-gradient-to-r from-amber-500 to-rose-500 px-7 py-3 text-sm font-semibold text-white shadow-lg shadow-rose-500/20"
+              whileHover={{ scale: 1.04 }}
+              whileTap={{ scale: 0.97 }}
+            >
+              <span className="relative z-10 flex items-center gap-2">
+                <span>✦</span>
+                <span>Celebrate once more</span>
+                <span>✦</span>
+              </span>
+              <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/40 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
+            </motion.button>
+
+            <motion.button
+              onClick={() => {
+                setPoemOpen(true);
+                playChime(523.25, "sine", 0.6, 0.1);
+                sparkle({ x: window.innerWidth / 2, y: window.innerHeight / 2, count: 18, kind: "rainbow" });
+              }}
+              className="group relative inline-flex items-center gap-2 overflow-hidden rounded-full border border-violet-300/60 bg-white/80 px-6 py-3 text-sm font-semibold text-violet-700 shadow-lg shadow-violet-500/10 backdrop-blur transition-colors hover:bg-violet-50 dark:bg-stone-800/80 dark:text-violet-200 dark:hover:bg-stone-700/80"
+              whileHover={{ scale: 1.04 }}
+              whileTap={{ scale: 0.97 }}
+              aria-label="Open the birthday poem composer"
+            >
+              <span className="relative z-10 flex items-center gap-2">
+                <span>✶</span>
+                <span>Compose a poem</span>
+              </span>
+              <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-violet-200/40 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
+            </motion.button>
+          </div>
 
           <StatsExportCard />
 
@@ -259,6 +293,8 @@ export default function StatsFinale() {
           )}
         </motion.div>
       </div>
+
+      <PoemComposer open={poemOpen} onClose={() => setPoemOpen(false)} />
     </section>
   );
 }

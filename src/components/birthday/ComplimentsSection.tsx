@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { useMemo, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { compliments } from "@/lib/birthday-data";
 import { sparkle } from "./SparkleCanvas";
 import { playChime } from "@/lib/audio";
@@ -15,28 +15,61 @@ type Chip = {
   top: number;
   delay: number;
   hue: number;
+  custom?: boolean;
 };
 
 const HUES = [12, 35, 280, 160, 200, 340];
+const CUSTOM_KEY = "heena:custom-compliments";
 
-function buildChips(): Chip[] {
-  return compliments.map((text, i) => ({
+function buildChips(custom: string[]): Chip[] {
+  const all = [...compliments, ...custom];
+  return all.map((text, i) => ({
     id: i,
     text,
     left: 8 + (i % 4) * 24 + Math.random() * 8,
     top: 12 + Math.floor(i / 4) * 32 + Math.random() * 6,
     delay: i * 0.08,
     hue: HUES[i % HUES.length],
+    custom: i >= compliments.length,
   }));
 }
 
 export default function ComplimentsSection() {
-  const [chips, setChips] = useState<Chip[]>(() => buildChips());
+  const [customCompliments, setCustomCompliments] = useState<string[]>([]);
+  const [chips, setChips] = useState<Chip[]>(() => buildChips([]));
   const [plucked, setPlucked] = useState<string[]>([]);
   const [lastPlucked, setLastPlucked] = useState<string | null>(null);
   const [shared, setShared] = useState(false);
-  const idRef = useMemo(() => ({ v: 1000 }), []);
+  const [adding, setAdding] = useState(false);
+  const [draft, setDraft] = useState("");
+  const idRef = useRef(1000);
   const incStat = useStatsStore((s) => s.inc);
+
+  // Hydrate custom compliments from localStorage on mount
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(CUSTOM_KEY);
+      if (raw) {
+        const arr = JSON.parse(raw) as string[];
+        if (Array.isArray(arr) && arr.length > 0) {
+          // eslint-disable-next-line react-hooks/set-state-in-effect
+          setCustomCompliments(arr);
+          setChips(buildChips(arr));
+        }
+      }
+    } catch {
+      // no-op
+    }
+  }, []);
+
+  // Persist custom compliments whenever they change
+  useEffect(() => {
+    try {
+      localStorage.setItem(CUSTOM_KEY, JSON.stringify(customCompliments));
+    } catch {
+      // no-op
+    }
+  }, [customCompliments]);
 
   const pluck = (chip: Chip, e: React.MouseEvent) => {
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
@@ -56,7 +89,7 @@ export default function ComplimentsSection() {
   };
 
   const refill = () => {
-    setChips(buildChips());
+    setChips(buildChips(customCompliments));
     playChime(440, "triangle", 0.6, 0.1);
     sparkle({
       x: window.innerWidth / 2,
@@ -64,6 +97,37 @@ export default function ComplimentsSection() {
       count: 20,
       kind: "gold",
     });
+  };
+
+  const growCompliment = () => {
+    const text = draft.trim();
+    if (!text) return;
+    const truncated = text.slice(0, 80);
+    const nextCustom = [...customCompliments, truncated];
+    setCustomCompliments(nextCustom);
+    // Add the new chip on top of any remaining chips
+    const newId = idRef.current;
+    idRef.current = idRef.current + 1;
+    const newChip: Chip = {
+      id: newId,
+      text: truncated,
+      left: 12 + Math.random() * 70,
+      top: 8 + Math.random() * 70,
+      delay: 0,
+      hue: HUES[(compliments.length + nextCustom.length) % HUES.length],
+      custom: true,
+    };
+    setChips((prev) => [...prev, newChip]);
+    setDraft("");
+    setAdding(false);
+    sparkle({
+      x: window.innerWidth / 2,
+      y: window.innerHeight / 2,
+      count: 18,
+      kind: "rainbow",
+    });
+    playChime(659.25, "sine", 0.8, 0.12);
+    incStat("sparklesFired", 1);
   };
 
   const shareBouquet = async () => {
@@ -120,7 +184,11 @@ export default function ComplimentsSection() {
             <motion.button
               key={chip.id}
               onClick={(e) => pluck(chip, e)}
-              className="group absolute cursor-pointer rounded-full border border-white/70 bg-white/80 px-4 py-2 text-xs font-semibold text-stone-700 shadow-lg backdrop-blur transition-colors hover:bg-white focus-ring-visible"
+              className={`group absolute cursor-pointer rounded-full border px-4 py-2 text-xs font-semibold shadow-lg backdrop-blur transition-colors hover:bg-white focus-ring-visible ${
+                chip.custom
+                  ? "border-violet-400/70 bg-violet-50/80 text-violet-800"
+                  : "border-white/70 bg-white/80 text-stone-700"
+              }`}
               style={{
                 left: `${chip.left}%`,
                 top: `${chip.top}%`,
@@ -150,9 +218,12 @@ export default function ComplimentsSection() {
               }}
               whileHover={{ scale: 1.08 }}
               whileTap={{ scale: 0.92 }}
-              aria-label={`Pluck compliment: ${chip.text}`}
+              aria-label={`Pluck compliment: ${chip.text}${chip.custom ? " (your own)" : ""}`}
             >
-              <span className="relative z-10">{chip.text}</span>
+              <span className="relative z-10 flex items-center gap-1.5">
+                {chip.custom && <span className="text-[0.6rem] text-violet-500" aria-hidden>✶</span>}
+                {chip.text}
+              </span>
               <span
                 className="pointer-events-none absolute -inset-1 rounded-full opacity-0 blur-md transition-opacity group-hover:opacity-60"
                 style={{
@@ -183,6 +254,87 @@ export default function ComplimentsSection() {
             </motion.button>
           </motion.div>
         )}
+      </div>
+
+      {/* Grow-a-Compliment — let the user plant their own floating note */}
+      <div className="mx-auto mt-6 flex max-w-2xl flex-col items-center gap-3">
+        <AnimatePresence mode="wait">
+          {adding ? (
+            <motion.div
+              key="add-form"
+              className="flex w-full flex-col gap-2 sm:flex-row sm:items-center"
+              initial={{ opacity: 0, y: 10, height: 0 }}
+              animate={{ opacity: 1, y: 0, height: "auto" }}
+              exit={{ opacity: 0, y: -10, height: 0 }}
+            >
+              <input
+                type="text"
+                value={draft}
+                onChange={(e) => setDraft(e.target.value.slice(0, 80))}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    growCompliment();
+                  } else if (e.key === "Escape") {
+                    e.preventDefault();
+                    setAdding(false);
+                    setDraft("");
+                  }
+                }}
+                placeholder="A true thing about Heena…"
+                autoFocus
+                maxLength={80}
+                className="flex-1 rounded-full border border-amber-300/60 bg-white/80 px-5 py-2.5 font-serif-elegant text-sm italic text-stone-700 outline-none transition-colors focus:border-amber-400 focus:bg-white focus-ring-visible dark:bg-stone-800/80 dark:text-amber-100"
+                aria-label="Type a custom compliment"
+              />
+              <div className="flex items-center gap-2">
+                <span className="font-mono-elegant text-[0.55rem] uppercase tracking-[0.2em] text-stone-400">
+                  {draft.length}/80
+                </span>
+                <motion.button
+                  onClick={growCompliment}
+                  className="rounded-full bg-gradient-to-r from-amber-500 to-rose-500 px-4 py-2 text-xs font-semibold text-white shadow-md focus-ring-visible"
+                  whileHover={{ scale: 1.04 }}
+                  whileTap={{ scale: 0.96 }}
+                  disabled={!draft.trim()}
+                  aria-label="Plant this compliment in the garden"
+                >
+                  ✶ plant
+                </motion.button>
+                <button
+                  onClick={() => {
+                    setAdding(false);
+                    setDraft("");
+                  }}
+                  className="rounded-full border border-stone-300/60 bg-white/70 px-3 py-2 text-xs font-semibold text-stone-500 transition-colors hover:bg-stone-50 focus-ring-visible"
+                  aria-label="Cancel"
+                >
+                  ✕
+                </button>
+              </div>
+            </motion.div>
+          ) : (
+            <motion.button
+              key="add-toggle"
+              onClick={() => setAdding(true)}
+              className="group flex items-center gap-2 rounded-full border border-violet-300/50 bg-white/70 px-5 py-2 text-xs font-semibold text-violet-700 backdrop-blur transition-colors hover:bg-violet-50 focus-ring-visible dark:bg-stone-800/70 dark:text-violet-200 dark:hover:bg-stone-700/70"
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              aria-label="Grow your own compliment in the garden"
+            >
+              <span className="text-base transition-transform group-hover:rotate-90">✦</span>
+              <span>Grow your own compliment</span>
+              {customCompliments.length > 0 && (
+                <span className="ml-1 rounded-full bg-violet-200/60 px-1.5 py-0.5 font-mono-elegant text-[0.5rem] uppercase tracking-[0.15em] text-violet-700">
+                  {customCompliments.length} planted
+                </span>
+              )}
+            </motion.button>
+          )}
+        </AnimatePresence>
       </div>
 
       <AnimatePresence>

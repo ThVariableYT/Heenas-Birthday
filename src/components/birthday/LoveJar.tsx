@@ -174,6 +174,9 @@ export default function LoveJar() {
             }}
           />
 
+          {/* Premium light-sweep sheen across the jar glass */}
+          <div className="jar-sheen rounded-[2.5rem]" aria-hidden />
+
           <svg viewBox="0 0 120 150" className="h-72 w-56 drop-shadow-[0_20px_40px_rgba(244,63,94,0.15)]">
             <defs>
               <linearGradient id="jarGlass" x1="0" y1="0" x2="1" y2="1">

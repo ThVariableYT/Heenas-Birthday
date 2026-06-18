@@ -53,6 +53,14 @@ export default function HeroSection() {
       className="relative flex min-h-screen flex-col items-center justify-center px-4 py-24"
       style={{ ["--px" as string]: "0px", ["--py" as string]: "0px" }}
     >
+      {/* Hero side-rail flourishes — vertical art-deco rules with a centered glyph */}
+      <div className="hero-side-rail left hidden md:block" aria-hidden>
+        <span className="hero-side-rail-glyph">✦</span>
+      </div>
+      <div className="hero-side-rail right hidden md:block" aria-hidden>
+        <span className="hero-side-rail-glyph">❋</span>
+      </div>
+
       <motion.div
         className="pointer-events-none absolute left-1/2 top-1/2 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2"
         style={{

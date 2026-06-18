@@ -154,6 +154,16 @@ export default function VinylPlayer() {
     playChime(440 + ratio * 400, "sine", 0.4, 0.08);
   };
 
+  /** Click a specific lyric line to seek playback to that line's timestamp. */
+  const seekToLyric = (time: number, idx: number) => {
+    if (!currentTrack) return;
+    const newTime = Math.max(0, Math.min(duration, time));
+    setElapsed(newTime);
+    setActiveLyricIndex(idx);
+    playChime(440 + (idx + 1) * 60, "sine", 0.4, 0.08);
+    sparkle({ x: window.innerWidth / 2, y: window.innerHeight / 2, count: 6, kind: "gold" });
+  };
+
   const toggleMute = () => {
     setMuted((m) => !m);
     if (!muted) {
@@ -451,9 +461,19 @@ export default function VinylPlayer() {
                   {currentTrack.lyrics.map((line, i) => (
                     <div
                       key={i}
-                      className={`lyric-line font-serif-elegant text-base ${
+                      onClick={() => seekToLyric(line.time, i)}
+                      className={`lyric-line cursor-pointer font-serif-elegant text-base transition-colors hover:text-amber-700 ${
                         i === activeLyricIndex ? "active" : ""
                       }`}
+                      title={`Jump to ${line.text.slice(0, 24)}…`}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          seekToLyric(line.time, i);
+                        }
+                      }}
                     >
                       {line.text}
                     </div>

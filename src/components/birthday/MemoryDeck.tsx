@@ -32,6 +32,7 @@ function MemoryCardItem({
 }) {
   const [tilt, setTilt] = useState({ rx: 0, ry: 0 });
   const cardRef = useRef<HTMLDivElement>(null);
+  const accentClass = `accent-${card.glyphAccent}`;
 
   const side = order % 2 === 0 ? -1 : 1;
   const offset = order * 0.08;
@@ -70,7 +71,7 @@ function MemoryCardItem({
       />
 
       <div
-        className="group relative h-[380px] w-[280px] cursor-pointer perspective focus-ring-visible"
+        className={`group relative h-[380px] w-[280px] cursor-pointer perspective focus-ring-visible ${accentClass}`}
         ref={cardRef}
         onPointerMove={handleMove}
         onPointerLeave={handleLeave}
@@ -105,11 +106,19 @@ function MemoryCardItem({
           >
             <div className="flex h-full flex-col justify-between">
               <div className="flex items-start justify-between">
-                <span className="font-mono-elegant text-[0.6rem] uppercase tracking-[0.3em] text-stone-500">
+                <span
+                  className="chapter-foil-underline font-mono-elegant text-[0.6rem] uppercase tracking-[0.3em] text-stone-500"
+                  style={{ color: "var(--card-accent)" }}
+                >
                   {card.front.label}
                 </span>
                 <div className="flex items-center gap-2">
-                  <span className="text-2xl text-amber-600/70">{card.front.glyph}</span>
+                  <span
+                    className="text-2xl"
+                    style={{ color: "var(--card-accent)" }}
+                  >
+                    {card.front.glyph}
+                  </span>
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -139,7 +148,10 @@ function MemoryCardItem({
               </div>
 
               <div>
-                <div className="mb-3 h-px w-12 bg-amber-500/40" />
+                <div
+                  className="mb-3 h-px w-12"
+                  style={{ background: "var(--card-accent-soft)" }}
+                />
                 <h3 className="font-serif-elegant text-3xl font-bold leading-tight text-stone-800">
                   {card.front.title}
                 </h3>
@@ -150,11 +162,12 @@ function MemoryCardItem({
                   {flipped ? "tap to close" : "tap to reveal"}
                 </span>
                 <motion.div
-                  className="flex h-8 w-8 items-center justify-center rounded-full border border-amber-500/30"
+                  className="flex h-8 w-8 items-center justify-center rounded-full border"
+                  style={{ borderColor: "var(--card-accent-soft)" }}
                   animate={{ rotate: [0, 360] }}
                   transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
                 >
-                  <span className="text-amber-600/70">↻</span>
+                  <span style={{ color: "var(--card-accent)" }}>↻</span>
                 </motion.div>
               </div>
             </div>
@@ -564,7 +577,7 @@ export default function MemoryDeck() {
             {/* Card content — large typography, full focus */}
             <motion.div
               key={readingIndex}
-              className="glass-premium relative z-10 w-full max-w-2xl rounded-[2rem] border border-amber-200/30 bg-gradient-to-br from-stone-900/95 via-stone-800/95 to-rose-950/95 p-10 text-amber-50 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.7)] sm:p-14"
+              className={`glass-premium reading-page-turn relative z-10 w-full max-w-2xl rounded-[2rem] border border-amber-200/30 bg-gradient-to-br from-stone-900/95 via-stone-800/95 to-rose-950/95 p-10 text-amber-50 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.7)] sm:p-14 accent-${memoryCards[readingIndex].glyphAccent}`}
               initial={{ scale: 0.92, y: 24, opacity: 0 }}
               animate={{ scale: 1, y: 0, opacity: 1 }}
               exit={{ scale: 0.95, y: 12, opacity: 0 }}

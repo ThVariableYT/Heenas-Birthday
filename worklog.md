@@ -396,3 +396,105 @@ Unresolved Issues or Risks, and Priority Recommendations for the Next Phase
   5. **Stats export: embed Google Fonts in canvas** so the keepsake uses the exact same Playfair Display + Plus Jakarta Sans typography as the site.
   6. **Accessibility**: a high-contrast theme variant; screen-reader announcements for stat increments and reading-mode navigation.
   7. **Performance**: prefetch the VinylPlayer dynamic chunk on hover; virtualize the wish album if it grows beyond 12 entries.
+
+---
+
+## Round 6 — Scheduled webDevReview (cron #215324)
+
+**Task ID**: 6
+**Agent**: main (webDevReview)
+**Task**: Assess status via agent-browser QA, then add more styling details + more features per the mandatory requirements.
+
+### Work Log
+- Read prior worklog (R1–R5, 399 lines); confirmed project stable and fully functional across 5 prior rounds.
+- Pre-feature QA via agent-browser (desktop 1440×900, mobile 390×844): intro → enter → all 8 sections render; no console errors; no horizontal overflow (desktop scrollW=1440=innerW; mobile scrollW=390=innerW); scrollH desktop 12559. Theme toggle, memory flip, candle blow, stats increment all verified functional. VLM spot-checks of hero/timeline/memory/jar/compliments/vinyl/cake/stats/footer all clean.
+- **No bugs to fix** — proceeded to feature/style additions per the mandatory requirements.
+
+#### New Features
+1. **Birthday Poem Composer** (`src/components/birthday/PoemComposer.tsx` + integrated into `StatsFinale`). A new full-screen overlay dialog triggered by a "Compose a poem" button (placed next to "Celebrate once more" in the StatsFinale footer). Features:
+   - 5 mood presets: **Tender** (rose), **Joyful** (amber), **Cosmic** (violet), **Cozy** (emerald), **Grateful** (sky) — each with its own gradient + glyph.
+   - A name input (defaults to "Heena", max 24 chars).
+   - Composes a deterministic-but-varied 8-line personalized poem by sampling one entry from each of 8 line-pools per mood (32 unique lines × 5 moods = 160 line variants). The composer uses a per-line seed (`seed*7 + i*13 + i*i`) so successive lines don't pick the same offset, then `{name}` placeholders are replaced.
+   - "Compose again" button regenerates the poem with a new seed (same mood).
+   - Each line is individually clickable (with hover copy-button affordance) → copies just that line. Plus a "copy the poem" button copies the full 8-line poem with header "For {name} ✦" and footer "— composed with love, on your day".
+   - Animated **poem-aura** behind the card (radial amber/rose/violet blooms, blurred, breathing).
+   - **Line-by-line reveal** — each line fades + slides in with a 0.12s stagger.
+   - Body scroll lock + Escape to close + click-outside-to-close on backdrop.
+   - Rainbow sparkle (26) + chime on every compose/regenerate; gold sparkle + chime on per-line copy; rainbow sparkle + chime on full-poem copy. Increments `sparklesFired` stat.
+2. **Grow-a-Compliment** (`ComplimentsSection.tsx`). The compliments garden now supports user-authored compliments:
+   - "Grow your own compliment" pill button below the garden box → expands an inline input (80-char limit, live counter, Enter to plant, Escape to cancel).
+   - Planted compliments float up into the garden as a violet-tinted chip with a ✶ marker (distinct from the curated chips), pluckable like the others.
+   - Persists to `localStorage` (`heena:custom-compliments`); on reload, custom compliments hydrate alongside the curated set. A "N planted" badge appears on the toggle button when any custom compliments exist.
+   - Rainbow sparkle (18) + high chime on plant; increments `sparklesFired` stat. Refill ("Grow them back") now restores custom compliments too.
+3. **Memory Deck per-card accent colors** (`birthday-data.ts` + `MemoryDeck.tsx`). Each of the 6 memory cards now has a distinct accent gradient applied to its glyph, divider line, "tap to reveal" rotation icon, chapter label, and the reading-mode card itself:
+   - Ch 01 rose, Ch 02 amber, Ch 03 violet, Ch 04 emerald, Ch 05 sky, Ch 06 gold.
+   - Driven by a new `glyphAccent` field on the `MemoryCard` type + a corresponding `.accent-{color}` CSS class that sets `--card-accent` and `--card-accent-soft` CSS variables (with dark-mode variants). Inline `style={{ color: "var(--card-accent)" }}` reads these.
+   - Verified via `getComputedStyle`: all 6 glyphs now render in their distinct accent colors (was previously a single amber-600 for all).
+4. **Vinyl lyric-line click-to-seek** (`VinylPlayer.tsx`). Each lyric line in the lyrics panel is now a clickable button that seeks playback to that line's timestamp + re-syncs the active lyric highlight. Adds `role="button"`, `tabIndex=0`, keyboard support (Enter/Space), title tooltip "Jump to {first 24 chars}…", and a small gold sparkle on click. Complements the existing seek-bar scrub.
+
+#### Styling Enhancements
+5. **Hero side-rail flourishes** — two vertical art-deco rules (left + right of the hero, `hidden md:block` so mobile keeps full width) with a gradient (transparent → amber → rose → amber → transparent), small radial dots at top + bottom, and a centered glyph (✦ left, ❋ right) that gently pulses. The glyph has the body background color so the rail appears to "pass through" it.
+6. **LoveJar glass sheen** — a `.jar-sheen` overlay on the jar container that runs a `jar-sheen-sweep` 6.5s animation: a slanted bright sliver of light sweeps diagonally across the jar glass every 6.5s, creating a premium "lit-from-within" effect. Dark-mode variant uses an amber-tinted sweep.
+7. **Eyebrow letterpress** — `.eyebrow-letterpress` utility with a dual-direction text-shadow (light-from-top, dark-from-bottom) for a subtle embossed/letterpress feel. (Class is available for future use; current SectionHeader already has its own treatment.)
+8. **Memory card chapter gold-foil underline** — `.chapter-foil-underline` utility adds an animated gold-foil gradient underline beneath each chapter label that scales in from left on `.group:hover`/`.group:focus-visible` and then continuously shimmers via the `foil-shimmer` keyframe (background-position sweep). The underline uses a multi-stop gradient (transparent → amber → rose → amber → transparent).
+9. **Stats grid radial spotlight** — a `.stats-spotlight` overlay behind the StatsFinale grid: two large blurred radial blooms (amber top-left, rose bottom-right) that add warmth and depth to the grid. Dark-mode variant uses reduced opacity.
+10. **Stat card constellation hover** — each stat card now shows a tiny constellation of 4 twinkling dots + a connecting line above the card on hover, color-matched to the card's accent. Adds a "data points" premium feel.
+11. **Reading-mode page-turn** — `.reading-page-turn` wrapper class ready for slide transitions between memories (the existing spring scale animation still runs; this class is positioned for future per-direction slide animation).
+12. **Poem composer aura + line reveal** — `.poem-aura` (breathing radial blooms) + `.poem-line` (line-by-line fade + slide reveal with staggered delay).
+13. **Dark-mode variants** for all new elements (side rails, jar sheen, accents, spotlight, constellation dots).
+14. **Reduced-motion neutralization** extended to all new infinite animations (hero rail glyph pulse, jar sheen sweep, garden breeze, poem aura, page-turn, stat constellation twinkle, foil shimmer).
+
+#### Bug Fixed During QA
+- **Per-card accent color not rendering**: initial implementation set `--card-accent: var(--card-accent)` as an inline style on the card wrapper — a circular reference that resolved to `unset`, causing all glyphs to inherit stone-800 instead of the per-card accent. Removed the redundant inline override; the `--card-accent` is now correctly set by the `.accent-{color}` class on the same element. Verified via `getComputedStyle`: all 6 glyphs now render in their distinct accent colors (rose #be123c, amber #b45309, violet #6d28d9, emerald #047857, sky #0369a1, gold #a16207).
+
+#### Lint / Build
+- One lint error during round: `idRef.v++` in `ComplimentsSection.growCompliment` — `idRef` was created via `useMemo(() => ({ v: 1000 }), [])`, and React Compiler flagged mutation of a useMemo value as `react-hooks/immutability`. Refactored to `useRef(1000)` + read-then-assign pattern (`const newId = idRef.current; idRef.current = idRef.current + 1`). Also moved the unused `useMemo` import to `useRef`.
+- Two `react-hooks/set-state-in-effect` warnings on the localStorage-hydrate effect — kept the targeted `eslint-disable-next-line` comment (canonical pattern, same as R2/R4).
+- One unused `eslint-disable` for `react-hooks/exhaustive-deps` in `PoemComposer` — removed by adding `incStat` to the dep array (it's a stable Zustand selector).
+- Final `bun run lint` → clean (0 errors, 0 warnings).
+
+### Stage Summary / Verification Results
+- `bun run lint` → clean (0 errors, 0 warnings).
+- Dev server compiles cleanly, `GET / 200`.
+- agent-browser desktop QA (1440×900) confirmed:
+  - Hero renders with **2 side-rail flourishes** (vertical lines with center ✦/❋ glyphs) on left + right edges. ✓
+  - Memory deck: all 6 cards now have **distinct accent colors** on their glyphs (verified via `getComputedStyle`: rose, amber, violet, emerald, sky, gold). ✓
+  - Memory card chapter label shows the **gold-foil underline** sweep on hover. ✓
+  - Love jar: `.jar-sheen` element present with `jar-sheen-sweep` animation running. ✓
+  - Compliments garden: "Grow your own compliment" button visible below the garden; clicking it expands the inline input; typing + Enter plants a violet-tinted chip with ✶ marker into the garden. ✓
+  - Vinyl: clicking a specific lyric line seeks playback to that line's timestamp + re-syncs the active highlight. ✓
+  - Stats finale: 8 stat cards in 2×4 grid; **radial spotlight** glow visible behind grid; both "Celebrate once more" AND "Compose a poem" buttons visible. ✓
+  - Stat cards: 8 `.stat-constellation` elements present (one per card), appear on hover. ✓
+  - Poem composer: clicking "Compose a poem" opens the overlay with 5 mood buttons (Tender/Joyful/Cosmic/Cozy/Grateful), name input (defaults "Heena"), 8-line poem with line-by-line reveal, "Compose again" + "copy the poem" buttons. Switching mood (Joyful) recomposes; "Compose again" regenerates with new seed; Escape closes. ✓
+  - Dark mode: all new elements (side rails, jar sheen, accents, spotlight, constellation, poem composer) adapt cleanly. ✓
+  - No console errors throughout all interactions. ✓
+  - No horizontal overflow (scrollW=1440=innerW). ✓
+- agent-browser mobile QA (390×844) confirmed:
+  - No horizontal overflow (scrollW=390=innerW). ✓
+  - Side rails hidden on mobile (md:block). ✓
+  - Poem composer renders correctly at mobile width. ✓
+  - Memory cards, stats grid, compliments garden all fit. ✓
+  - 0 console errors. ✓
+- VLM (glm-4.6v) reviews:
+  - Hero with side rails: "vertical side-rail art-deco flourishes with center glyphs are visible on both left and right edges; typography premium; no visual bugs; polish 9/10".
+  - Poem composer: "5 mood buttons visible with distinct colors; 8-line poem visible with line-by-line typography; 'Compose again' + 'copy the poem' buttons visible; no visual bugs; polish 9/10".
+  - Compliments garden: "floating compliment chips visible; 'Grow your own compliment' button visible below the garden; no visual bugs; polish 9/10".
+  - Stats grid: "8 stat cards in 2×4 grid; 'Celebrate once more' + 'Compose a poem' buttons visible; subtle spotlight glow behind grid; no visual bugs; polish 9/10".
+  - Memory deck: "glyphs shown in different accent colors (sky-blue for Ch 05, gold for Ch 06); polish 8/10".
+  - Love jar dark mode: "background dark; jar visible with appropriate contrast; text readable; polish 9/10".
+
+### Unresolved Issues or Risks, and Priority Recommendations for the Next Phase
+- **Harmless dev warning**: framer-motion `useScroll` container-position warning persists in dev (sections are `relative`). Non-blocking; cosmetic only.
+- **Vinyl audio is still procedural** (Web Audio synth, no real audio files). The new lyric-click-to-seek works against the mock clock. Real audio + `.lrc` upload remains a future enhancement.
+- **Clipboard API in headless test**: `navigator.clipboard.writeText` may fail in agent-browser (no clipboard permission); the per-line copy / full-poem copy / bouquet-copy toasts may not appear in QA screenshots but the sparkle + chime feedback always fires. In a real browser with a user gesture, both succeed.
+- **Poem composer lexicon is English-only**: 160 line variants across 5 moods, all English. A multilingual lexicon would be a future enhancement.
+- **Custom compliments persist but aren't counted in stats**: planting a custom compliment increments `sparklesFired` but not a dedicated "compliments grown" counter. The existing `complimentsPlucked` counter does increment when a custom chip is plucked, so the user's interactions with their own compliments are tracked.
+- **Recommended next-phase features** (in priority order):
+  1. **Vinyl: real audio + .lrc upload** — support user-uploaded audio files + .lrc lyrics for true scrub/sync, replacing the procedural melody. The "copy lyrics" + click-to-seek features would become even more meaningful.
+  2. **Poem composer: embed the user's sealed-wish keywords + plucked compliments into the poem** — currently the composer uses a fixed lexicon; sampling from the user's actual interactions would make each poem more personal.
+  3. **Memory deck: per-card back-side accent** — currently the back of every memory card uses the same dark gradient. The per-card accent could extend to a subtle accent-tinted glow on the back.
+  4. **Love jar: export kept-thoughts** as a printable PDF or shareable image (R3 leftover).
+  5. **Stats export: embed Google Fonts in canvas** so the keepsake PNG uses the exact Playfair Display + Plus Jakarta Sans typography (R4 leftover).
+  6. **Accessibility**: full keyboard navigation pass + visible focus rings on poem composer mood buttons; screen-reader announcements for poem line reveals.
+  7. **Performance**: prefetch the VinylPlayer dynamic chunk on hover; virtualize the wish album if it grows beyond 12 entries.
+  8. **Custom cursor for poem composer**: a small ✶ that follows the cursor inside the poem dialog (gated behind reduced-motion).

@@ -1237,3 +1237,287 @@ kbd {
   .vinyl-groove-ring { animation: none; opacity: 0.25; }
 }
 
+/* ============================================================
+   ROUND 6 — additional styling details
+   ============================================================ */
+
+/* Hero side-rail flourishes — vertical art-deco rules with a centered glyph */
+.hero-side-rail {
+  position: absolute;
+  top: 18%;
+  bottom: 18%;
+  width: 1px;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(180, 83, 9, 0.35) 20%,
+    rgba(244, 63, 94, 0.35) 50%,
+    rgba(180, 83, 9, 0.35) 80%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+.hero-side-rail::before,
+.hero-side-rail::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(251, 191, 36, 0.85), rgba(244, 63, 94, 0.4) 60%, transparent 70%);
+  transform: translateX(-50%);
+}
+.hero-side-rail::before { top: 0; }
+.hero-side-rail::after { bottom: 0; }
+.hero-side-rail-glyph {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 1.5rem;
+  color: rgba(180, 83, 9, 0.55);
+  background: var(--background);
+  padding: 4px 0;
+  letter-spacing: 0;
+  animation: hero-rail-glyph-pulse 5s ease-in-out infinite;
+}
+.hero-side-rail.left { left: clamp(8px, 4vw, 60px); }
+.hero-side-rail.right { right: clamp(8px, 4vw, 60px); }
+.dark .hero-side-rail-glyph { background: var(--background); color: rgba(251, 191, 36, 0.8); }
+.dark .hero-side-rail {
+  background: linear-gradient(180deg, transparent 0%, rgba(251, 191, 36, 0.3) 20%, rgba(244, 63, 94, 0.3) 50%, rgba(251, 191, 36, 0.3) 80%, transparent 100%);
+}
+@keyframes hero-rail-glyph-pulse {
+  0%, 100% { opacity: 0.5; transform: translate(-50%, -50%) scale(1); }
+  50% { opacity: 0.95; transform: translate(-50%, -50%) scale(1.18); }
+}
+
+/* LoveJar — animated diagonal light-sweep sheen across the glass */
+.jar-sheen {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  border-radius: inherit;
+}
+.jar-sheen::before {
+  content: "";
+  position: absolute;
+  top: -20%;
+  left: -60%;
+  width: 35%;
+  height: 140%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.5) 45%,
+    rgba(255, 236, 220, 0.7) 50%,
+    rgba(255, 255, 255, 0.5) 55%,
+    transparent 100%
+  );
+  transform: skewX(-18deg);
+  filter: blur(2px);
+  animation: jar-sheen-sweep 6.5s ease-in-out infinite;
+}
+@keyframes jar-sheen-sweep {
+  0% { left: -60%; opacity: 0; }
+  15% { opacity: 0.9; }
+  45% { left: 130%; opacity: 0.9; }
+  50%, 100% { left: 130%; opacity: 0; }
+}
+.dark .jar-sheen::before {
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.18) 45%, rgba(251, 191, 36, 0.4) 50%, rgba(255, 255, 255, 0.18) 55%, transparent 100%);
+}
+
+/* Eyebrow label letterpress — subtle inset shadow + slight color depth */
+.eyebrow-letterpress {
+  text-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.7),
+    0 -1px 0 rgba(120, 53, 15, 0.18);
+}
+.dark .eyebrow-letterpress {
+  text-shadow:
+    0 1px 0 rgba(0, 0, 0, 0.5),
+    0 -1px 0 rgba(251, 191, 36, 0.25);
+}
+
+/* Memory card chapter label — animated gold-foil underline on hover/focus */
+.chapter-foil-underline {
+  position: relative;
+  display: inline-block;
+}
+.chapter-foil-underline::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -3px;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(251, 191, 36, 0) 5%,
+    rgba(251, 191, 36, 0.9) 30%,
+    rgba(244, 63, 94, 0.9) 50%,
+    rgba(251, 191, 36, 0.9) 70%,
+    rgba(251, 191, 36, 0) 95%,
+    transparent 100%
+  );
+  background-size: 250% 100%;
+  background-position: 100% 0;
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.group:hover .chapter-foil-underline::after,
+.group:focus-visible .chapter-foil-underline::after {
+  transform: scaleX(1);
+  animation: foil-shimmer 1.8s linear infinite;
+}
+@keyframes foil-shimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+/* Per-card accent colors — used for memory card glyph + small flourishes */
+.accent-amber { --card-accent: #b45309; --card-accent-soft: rgba(251, 191, 36, 0.45); }
+.accent-rose  { --card-accent: #be123c; --card-accent-soft: rgba(244, 63, 94, 0.45); }
+.accent-violet { --card-accent: #6d28d9; --card-accent-soft: rgba(167, 139, 250, 0.5); }
+.accent-emerald { --card-accent: #047857; --card-accent-soft: rgba(52, 211, 153, 0.45); }
+.accent-sky { --card-accent: #0369a1; --card-accent-soft: rgba(56, 189, 248, 0.45); }
+.accent-gold { --card-accent: #a16207; --card-accent-soft: rgba(234, 179, 8, 0.5); }
+.dark .accent-amber { --card-accent: #fbbf24; }
+.dark .accent-rose  { --card-accent: #fb7185; }
+.dark .accent-violet { --card-accent: #c4b5fd; }
+.dark .accent-emerald { --card-accent: #6ee7b7; }
+.dark .accent-sky { --card-accent: #7dd3fc; }
+.dark .accent-gold { --card-accent: #fde047; }
+
+/* Stats grid — radial spotlight bloom behind the grid */
+.stats-spotlight {
+  position: absolute;
+  inset: -10% 5%;
+  background:
+    radial-gradient(ellipse at 30% 20%, rgba(251, 191, 36, 0.18), transparent 55%),
+    radial-gradient(ellipse at 70% 80%, rgba(244, 63, 94, 0.14), transparent 55%);
+  filter: blur(40px);
+  pointer-events: none;
+  z-index: 0;
+}
+.dark .stats-spotlight {
+  background:
+    radial-gradient(ellipse at 30% 20%, rgba(251, 191, 36, 0.12), transparent 55%),
+    radial-gradient(ellipse at 70% 80%, rgba(244, 63, 94, 0.1), transparent 55%);
+}
+
+/* Stat card — constellation of tiny connecting dots above on hover */
+.stat-constellation {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 70px;
+  height: 18px;
+  opacity: 0;
+  transition: opacity 0.35s ease;
+  pointer-events: none;
+}
+.group:hover .stat-constellation { opacity: 1; }
+.stat-constellation .dot {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--card-accent, #b45309);
+  box-shadow: 0 0 4px var(--card-accent-soft, rgba(251, 191, 36, 0.45));
+  animation: stat-constellation-twinkle 2s ease-in-out infinite;
+}
+.stat-constellation .dot:nth-child(1) { top: 2px; left: 8px; animation-delay: 0s; }
+.stat-constellation .dot:nth-child(2) { top: 10px; left: 28px; animation-delay: 0.3s; }
+.stat-constellation .dot:nth-child(3) { top: 4px; left: 48px; animation-delay: 0.6s; }
+.stat-constellation .dot:nth-child(4) { top: 12px; left: 62px; animation-delay: 0.9s; }
+.stat-constellation::before {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 9px;
+  right: 9px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--card-accent-soft, rgba(251, 191, 36, 0.45)), transparent);
+  transform: translateY(2px) rotate(-2deg);
+  opacity: 0.6;
+}
+@keyframes stat-constellation-twinkle {
+  0%, 100% { opacity: 0.35; transform: scale(0.85); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+
+/* Compliments garden — gentle "wind" sway applied to chip wrapper */
+.garden-breeze {
+  animation: garden-breeze 7s ease-in-out infinite;
+  transform-origin: 50% 100%;
+}
+@keyframes garden-breeze {
+  0%, 100% { transform: rotate(-1.2deg); }
+  25% { transform: rotate(0.6deg); }
+  50% { transform: rotate(1.4deg); }
+  75% { transform: rotate(-0.4deg); }
+}
+
+/* Reading-mode page-turn — slide transition between memories */
+.reading-page-turn {
+  position: relative;
+}
+.reading-page-enter-right {
+  animation: page-turn-in-right 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.reading-page-enter-left {
+  animation: page-turn-in-left 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes page-turn-in-right {
+  0% { opacity: 0; transform: translateX(40px) rotateY(-6deg); }
+  100% { opacity: 1; transform: translateX(0) rotateY(0); }
+}
+@keyframes page-turn-in-left {
+  0% { opacity: 0; transform: translateX(-40px) rotateY(6deg); }
+  100% { opacity: 1; transform: translateX(0) rotateY(0); }
+}
+
+/* Poem composer — line-by-line reveal + aura */
+.poem-aura {
+  position: absolute;
+  inset: -8% -4%;
+  background:
+    radial-gradient(ellipse at 20% 30%, rgba(251, 191, 36, 0.22), transparent 55%),
+    radial-gradient(ellipse at 80% 70%, rgba(244, 63, 94, 0.18), transparent 55%),
+    radial-gradient(ellipse at 50% 100%, rgba(167, 139, 250, 0.18), transparent 55%);
+  filter: blur(36px);
+  pointer-events: none;
+  animation: poem-aura-breathe 9s ease-in-out infinite;
+}
+@keyframes poem-aura-breathe {
+  0%, 100% { opacity: 0.7; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.05); }
+}
+.poem-line {
+  opacity: 0;
+  transform: translateY(8px);
+  animation: poem-line-reveal 0.6s ease-out forwards;
+}
+@keyframes poem-line-reveal {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Reduced-motion — neutralize new infinite animations */
+@media (prefers-reduced-motion: reduce) {
+  .hero-side-rail-glyph { animation: none; }
+  .jar-sheen::before { animation: none; opacity: 0; }
+  .garden-breeze { animation: none; }
+  .poem-aura { animation: none; }
+  .reading-page-enter-right,
+  .reading-page-enter-left { animation: none; opacity: 1; transform: none; }
+  .stat-constellation .dot { animation: none; }
+  .chapter-foil-underline::after { transition: none; animation: none; }
+}
+

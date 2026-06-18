@@ -11,6 +11,8 @@ export type MemoryCard = {
     signature: string;
   };
   accent: string;
+  /** distinct per-card accent — drives glyph color, divider, hover foil underline */
+  glyphAccent: "amber" | "rose" | "violet" | "emerald" | "sky" | "gold";
 };
 
 export const memoryCards: MemoryCard[] = [
@@ -23,6 +25,7 @@ export const memoryCards: MemoryCard[] = [
       signature: "— a memory I keep replaying",
     },
     accent: "from-rose-200/60 to-amber-100/40",
+    glyphAccent: "rose",
   },
   {
     id: 2,
@@ -33,6 +36,7 @@ export const memoryCards: MemoryCard[] = [
       signature: "— the smallest things, the loudest",
     },
     accent: "from-amber-200/60 to-rose-100/40",
+    glyphAccent: "amber",
   },
   {
     id: 3,
@@ -43,6 +47,7 @@ export const memoryCards: MemoryCard[] = [
       signature: "— heard, in the truest sense",
     },
     accent: "from-violet-200/60 to-amber-100/40",
+    glyphAccent: "violet",
   },
   {
     id: 4,
@@ -53,6 +58,7 @@ export const memoryCards: MemoryCard[] = [
       signature: "— lost, and found, at once",
     },
     accent: "from-emerald-200/60 to-amber-100/40",
+    glyphAccent: "emerald",
   },
   {
     id: 5,
@@ -63,6 +69,7 @@ export const memoryCards: MemoryCard[] = [
       signature: "— anchored, always",
     },
     accent: "from-sky-200/60 to-rose-100/40",
+    glyphAccent: "sky",
   },
   {
     id: 6,
@@ -73,6 +80,7 @@ export const memoryCards: MemoryCard[] = [
       signature: "— celebrated, completely",
     },
     accent: "from-rose-200/60 to-violet-100/40",
+    glyphAccent: "gold",
   },
 ];
 
