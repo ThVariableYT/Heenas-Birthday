@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { tracks, type Track } from "@/lib/birthday-data";
 import { sparkle } from "./SparkleCanvas";
-import { playChime, startProceduralMelody, setMasterVolume, getMasterVolume, pauseProceduralMelody, resumeProceduralMelody, getAnalyser } from "@/lib/audio";
+import { playChime, setMasterVolume, getMasterVolume, getAnalyser } from "@/lib/audio";
 import { useStatsStore } from "@/lib/stats-store";
 import SectionHeader from "./SectionHeader";
 
@@ -18,7 +18,6 @@ type UploadedTrack = {
   lrcName?: string;
 };
 
-/** Parse .lrc file content into timed lyric lines. */
 function parseLrc(content: string): LyricLine[] {
   const lines = content.split(/\r?\n/);
   const out: LyricLine[] = [];
@@ -73,17 +72,6 @@ function Waveform({ active, progress }: { active: boolean; progress: number }) {
   );
 }
 
-/**
- * RealtimeWaveform — a canvas-based real-time waveform visualizer that reads
- * time-domain samples from the shared AnalyserNode on the audio engine. When
- * audio is active, it draws a smooth, glowing waveform that reacts to the
- * actual sound coming through the main gain bus (procedural melody, ambient
- * pad, chimes, or uploaded audio). When idle, it draws a flat center line
- * with a gentle "sleep" ripple so the canvas never looks dead.
- *
- * This complements the existing `Waveform` bar visualizer (which is a fake
- * progress indicator) with a true audio-reactive readout.
- */
 function RealtimeWaveform({ active }: { active: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const rafRef = useRef(0);
@@ -95,7 +83,6 @@ function RealtimeWaveform({ active }: { active: boolean }) {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // High-DPI sizing — match canvas backing store to its CSS size × dpr.
     const resize = () => {
       const dpr = window.devicePixelRatio || 1;
       const rect = canvas.getBoundingClientRect();
@@ -107,7 +94,6 @@ function RealtimeWaveform({ active }: { active: boolean }) {
     window.addEventListener("resize", resize);
 
     const analyser = getAnalyser();
-    // Reuse a single buffer across frames; size matches analyser.fftSize.
     const buf = analyser ? new Uint8Array(analyser.fftSize) : null;
 
     const render = () => {
@@ -118,7 +104,6 @@ function RealtimeWaveform({ active }: { active: boolean }) {
 
       ctx.clearRect(0, 0, w, h);
 
-      // Background grid — faint horizontal center reference line.
       ctx.strokeStyle = "rgba(167, 139, 250, 0.18)";
       ctx.lineWidth = 1;
       ctx.beginPath();
@@ -126,8 +111,6 @@ function RealtimeWaveform({ active }: { active: boolean }) {
       ctx.lineTo(w, midY);
       ctx.stroke();
 
-      // Idle state — draw a gentle sine ripple so the canvas looks alive
-      // even when nothing is playing.
       if (!active || !analyser || !buf) {
         phaseRef.current += 0.03;
         const phase = phaseRef.current;
@@ -144,17 +127,15 @@ function RealtimeWaveform({ active }: { active: boolean }) {
         return;
       }
 
-      // Active state — read real time-domain samples and draw a glowing waveform.
       analyser.getByteTimeDomainData(buf);
 
-      // Outer glow pass — wide, low-opacity amber stroke.
       ctx.strokeStyle = "rgba(251, 191, 36, 0.35)";
       ctx.lineWidth = 4;
       ctx.lineJoin = "round";
       ctx.beginPath();
       const step = w / buf.length;
       for (let i = 0; i < buf.length; i++) {
-        const v = (buf[i] - 128) / 128; // -1..1
+        const v = (buf[i] - 128) / 128;
         const y = midY + v * (h * 0.42);
         const x = i * step;
         if (i === 0) ctx.moveTo(x, y);
@@ -162,7 +143,6 @@ function RealtimeWaveform({ active }: { active: boolean }) {
       }
       ctx.stroke();
 
-      // Main pass — bright amber→rose gradient stroke.
       const grad = ctx.createLinearGradient(0, 0, w, 0);
       grad.addColorStop(0, "#fbbf24");
       grad.addColorStop(0.5, "#fb7185");
@@ -199,15 +179,6 @@ function RealtimeWaveform({ active }: { active: boolean }) {
   );
 }
 
-/**
- * CircularSpectrum — a canvas ring that wraps around the vinyl record and
- * renders the live frequency spectrum as radial bars. Reads
- * `analyser.getByteFrequencyData()` (frequency domain — distinct from the
- * waveform's time-domain) and draws bars radiating outward from the record's
- * edge. Bars are tinted by an amber→rose→violet gradient that maps to the
- * bar's amplitude, and the whole ring gently pulses in idle state so it
- * never looks dead. This is the "the record is alive" visual cue.
- */
 function CircularSpectrum({ active }: { active: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const rafRef = useRef(0);
@@ -219,14 +190,13 @@ function CircularSpectrum({ active }: { active: boolean }) {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const SIZE = 320; // CSS px (square)
+    const SIZE = 320;
     const dpr = window.devicePixelRatio || 1;
     canvas.width = Math.floor(SIZE * dpr);
     canvas.height = Math.floor(SIZE * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
     const analyser = getAnalyser();
-    // Use a smaller bin count for the circular viz — 64 bars look clean.
     const BAR_COUNT = 64;
     const buf = analyser ? new Uint8Array(analyser.frequencyBinCount) : null;
 
@@ -235,8 +205,8 @@ function CircularSpectrum({ active }: { active: boolean }) {
       const h = SIZE;
       const cx = w / 2;
       const cy = h / 2;
-      const innerR = 132; // just outside the record edge
-      const maxBarLen = 24; // radial bar length range
+      const innerR = 132;
+      const maxBarLen = 24;
 
       ctx.clearRect(0, 0, w, h);
 
@@ -244,7 +214,6 @@ function CircularSpectrum({ active }: { active: boolean }) {
       const phase = phaseRef.current;
 
       if (!active || !analyser || !buf) {
-        // Idle — render a gentle pulsing ring of faint dots.
         for (let i = 0; i < BAR_COUNT; i++) {
           const angle = (i / BAR_COUNT) * Math.PI * 2 - Math.PI / 2;
           const breath = 0.5 + 0.5 * Math.sin(phase + i * 0.2);
@@ -264,15 +233,12 @@ function CircularSpectrum({ active }: { active: boolean }) {
         return;
       }
 
-      // Active — sample 64 bins spread across the lower 3/4 of the spectrum
-      // (the upper quarter is mostly inaudible highs on procedural audio).
       analyser.getByteFrequencyData(buf);
       const usableBins = Math.floor(buf.length * 0.75);
       const stride = Math.max(1, Math.floor(usableBins / BAR_COUNT));
 
       for (let i = 0; i < BAR_COUNT; i++) {
         const angle = (i / BAR_COUNT) * Math.PI * 2 - Math.PI / 2;
-        // Average a small window for smoother bars.
         let sum = 0;
         let cnt = 0;
         for (let j = 0; j < stride; j++) {
@@ -282,15 +248,14 @@ function CircularSpectrum({ active }: { active: boolean }) {
             cnt++;
           }
         }
-        const avg = cnt ? sum / cnt : 0; // 0-255
-        const norm = avg / 255; // 0-1
+        const avg = cnt ? sum / cnt : 0;
+        const norm = avg / 255;
         const len = 2 + norm * maxBarLen;
         const x1 = cx + Math.cos(angle) * innerR;
         const y1 = cy + Math.sin(angle) * innerR;
         const x2 = cx + Math.cos(angle) * (innerR + len);
         const y2 = cy + Math.sin(angle) * (innerR + len);
 
-        // Gradient stroke by amplitude: amber → rose → violet
         const r = Math.round(251 + (167 - 251) * norm);
         const g = Math.round(191 + (139 - 191) * norm);
         const b = Math.round(36 + (250 - 36) * norm);
@@ -303,7 +268,6 @@ function CircularSpectrum({ active }: { active: boolean }) {
         ctx.lineTo(x2, y2);
         ctx.stroke();
 
-        // Bright tip dot on loud bars.
         if (norm > 0.4) {
           ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${0.85})`;
           ctx.beginPath();
@@ -333,7 +297,7 @@ function CircularSpectrum({ active }: { active: boolean }) {
 }
 
 export default function VinylPlayer() {
-  const [currentTrack, setCurrentTrack] = useState<Track | UploadedTrack | null>(null);
+  const [currentTrack, setCurrentTrack] = useState<any>(null);
   const [uploaded, setUploaded] = useState<UploadedTrack | null>(null);
   const [playing, setPlaying] = useState(false);
   const [paused, setPaused] = useState(false);
@@ -345,19 +309,11 @@ export default function VinylPlayer() {
   const [copied, setCopied] = useState(false);
   const [sectionInView, setSectionInView] = useState(true);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const proceduralRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const elapsedRef = useRef(0);
   const sectionRef = useRef<HTMLElement>(null);
   const audioElRef = useRef<HTMLAudioElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const incStat = useStatsStore((s) => s.inc);
 
-  useEffect(() => {
-    elapsedRef.current = elapsed;
-  }, [elapsed]);
-
-  // Track whether the vinyl section is in the viewport — when it isn't and
-  // music is playing, show the floating mini-player.
   useEffect(() => {
     const el = sectionRef.current;
     if (!el) return;
@@ -381,29 +337,68 @@ export default function VinylPlayer() {
     }
   }, [volume, muted]);
 
-  // Procedural-melody elapsed-time ticker (only for non-uploaded tracks)
   useEffect(() => {
-    if (!playing || paused || !currentTrack || uploaded) return;
-    const interval = setInterval(() => {
-      setElapsed((prev) => {
-        const next = prev + 0.5;
-        if (next >= duration) {
-          return prev;
-        }
-        const lyrics = (currentTrack as Track).lyrics || [];
-        let idx = -1;
-        for (let i = 0; i < lyrics.length; i++) {
-          if (next >= lyrics[i].time) idx = i;
-          else break;
-        }
-        setActiveLyricIndex(idx);
-        return next;
-      });
-    }, 500);
-    return () => clearInterval(interval);
-  }, [playing, paused, currentTrack, duration, uploaded]);
+    const el = audioElRef.current;
+    if (!el) return;
 
-  const selectTrack = (track: Track, e: React.MouseEvent) => {
+    const onLoaded = () => {
+      setDuration(el.duration || 32);
+      el.volume = muted ? 0 : volume;
+      if (playing && !paused) {
+        el.play().catch(() => {});
+      }
+    };
+
+    const onTime = () => {
+      setElapsed(el.currentTime);
+      if (currentTrack) {
+        const lyrics = currentTrack.lyrics || [];
+        if (lyrics.length > 0) {
+          let idx = -1;
+          for (let i = 0; i < lyrics.length; i++) {
+            if (el.currentTime >= lyrics[i].time) idx = i;
+            else break;
+          }
+          setActiveLyricIndex(idx);
+        }
+      }
+    };
+
+    const onEnd = () => {
+      stopPlayback();
+    };
+
+    el.addEventListener("loadedmetadata", onLoaded);
+    el.addEventListener("timeupdate", onTime);
+    el.addEventListener("ended", onEnd);
+    
+    return () => {
+      el.removeEventListener("loadedmetadata", onLoaded);
+      el.removeEventListener("timeupdate", onTime);
+      el.removeEventListener("ended", onEnd);
+    };
+  }, [currentTrack, muted, volume, playing, paused]);
+
+  useEffect(() => {
+    const el = audioElRef.current;
+    if (!el) return;
+    if (playing && !paused) {
+      el.play().catch(() => {});
+    } else {
+      el.pause();
+    }
+  }, [playing, paused, currentTrack]);
+
+  useEffect(() => {
+    if (!playing || paused) return;
+    const interval = setInterval(() => {
+      const cx = window.innerWidth / 2;
+      sparkle({ x: cx + (Math.random() * 80 - 40), y: window.innerHeight / 2, count: 1, kind: "rainbow" });
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [playing, paused]);
+
+  const selectTrack = (track: any, e: React.MouseEvent) => {
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     sparkle({ x: rect.left + rect.width / 2, y: rect.top, count: 12, kind: "gold" });
 
@@ -412,37 +407,21 @@ export default function VinylPlayer() {
       return;
     }
 
-    // If switching from uploaded audio, clear it
     if (uploaded) {
-      if (audioElRef.current) {
-        audioElRef.current.pause();
-        audioElRef.current.src = "";
-      }
       setUploaded(null);
     }
 
-    // Count a newly-selected track (only when switching to a different one or starting fresh)
     if (!currentTrack || currentTrack.name !== track.name) {
       incStat("tracksPlayed", 1);
       incStat("sparklesFired", 1);
     }
 
-    if (proceduralRef.current) {
-      clearInterval(proceduralRef.current);
-      proceduralRef.current = null;
-    }
-
-    setDuration(parseDuration(track.duration));
     setCurrentTrack(track);
     setPlaying(true);
     setPaused(false);
     setElapsed(0);
     setActiveLyricIndex(-1);
 
-    proceduralRef.current = startProceduralMelody(() => {
-      const cx = window.innerWidth / 2;
-      sparkle({ x: cx + (Math.random() * 80 - 40), y: window.innerHeight / 2, count: 1, kind: "rainbow" });
-    });
     playChime(523.25, "sine", 1.5, 0.1);
   };
 
@@ -452,10 +431,6 @@ export default function VinylPlayer() {
     setCurrentTrack(null);
     setElapsed(0);
     setActiveLyricIndex(-1);
-    if (proceduralRef.current) {
-      clearInterval(proceduralRef.current);
-      proceduralRef.current = null;
-    }
     if (audioElRef.current) {
       audioElRef.current.pause();
       audioElRef.current.currentTime = 0;
@@ -463,28 +438,20 @@ export default function VinylPlayer() {
     playChime(220, "sine", 0.8, 0.08);
   };
 
-  /** True pause — suspends the procedural melody without losing track state. */
   const pausePlayback = () => {
     if (!playing) return;
     setPaused(true);
-    if (uploaded && audioElRef.current) {
+    if (audioElRef.current) {
       audioElRef.current.pause();
-    } else {
-      pauseProceduralMelody();
     }
     playChime(330, "sine", 0.4, 0.08);
   };
 
-  /** Resume after a true pause. */
   const resumePlayback = () => {
     if (!playing || !paused) return;
     setPaused(false);
-    if (uploaded && audioElRef.current) {
-      audioElRef.current.play().catch(() => {
-        // no-op
-      });
-    } else {
-      resumeProceduralMelody();
+    if (audioElRef.current) {
+      audioElRef.current.play().catch(() => {});
     }
     playChime(523.25, "sine", 0.4, 0.08);
   };
@@ -507,12 +474,12 @@ export default function VinylPlayer() {
     const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
     const newTime = ratio * duration;
     setElapsed(newTime);
-    if (uploaded && audioElRef.current) {
+    if (audioElRef.current) {
       audioElRef.current.currentTime = newTime;
     }
     setActiveLyricIndex(() => {
       let idx = -1;
-      const lyrics = (currentTrack as Track).lyrics || (uploaded?.lyrics ?? []);
+      const lyrics = currentTrack.lyrics || [];
       for (let i = 0; i < lyrics.length; i++) {
         if (newTime >= lyrics[i].time) idx = i;
         else break;
@@ -522,12 +489,11 @@ export default function VinylPlayer() {
     playChime(440 + ratio * 400, "sine", 0.4, 0.08);
   };
 
-  /** Click a specific lyric line to seek playback to that line's timestamp. */
   const seekToLyric = (time: number, idx: number) => {
     if (!currentTrack) return;
     const newTime = Math.max(0, Math.min(duration, time));
     setElapsed(newTime);
-    if (uploaded && audioElRef.current) {
+    if (audioElRef.current) {
       audioElRef.current.currentTime = newTime;
     }
     setActiveLyricIndex(idx);
@@ -547,7 +513,6 @@ export default function VinylPlayer() {
   const fmt = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
   const progress = currentTrack ? Math.min(elapsed / duration, 1) : 0;
 
-  /** Handle a user-uploaded audio file + optional .lrc. */
   const handleUpload = useCallback((files: FileList | null) => {
     setUploadError(null);
     if (!files || files.length === 0) return;
@@ -565,15 +530,10 @@ export default function VinylPlayer() {
       const uploadedTrack: UploadedTrack = {
         name: audioFile.name.replace(/\.[^.]+$/, ""),
         url,
-        duration: 0, // will be set when audio metadata loads
+        duration: 0,
         lyrics,
         lrcName: lrcFile?.name,
       };
-      // Stop procedural melody if running
-      if (proceduralRef.current) {
-        clearInterval(proceduralRef.current);
-        proceduralRef.current = null;
-      }
       setUploaded(uploadedTrack);
       setCurrentTrack(uploadedTrack);
       setPlaying(true);
@@ -588,51 +548,10 @@ export default function VinylPlayer() {
     if (lrcFile) {
       reader.readAsText(lrcFile);
     } else {
-      // No .lrc — proceed with empty lyrics
       reader.onload({ target: { result: "" } } as unknown as ProgressEvent<FileReader>);
     }
   }, [incStat]);
 
-  /** Audio element event handlers — wired when uploaded track plays. */
-  useEffect(() => {
-    const el = audioElRef.current;
-    if (!el || !uploaded) return;
-    const onLoaded = () => {
-      setDuration(el.duration || 0);
-      el.volume = muted ? 0 : volume;
-      el.play().catch(() => {
-        // no-op — autoplay may require user gesture
-      });
-    };
-    const onTime = () => {
-      setElapsed(el.currentTime);
-      const lyrics = uploaded.lyrics;
-      if (lyrics.length > 0) {
-        let idx = -1;
-        for (let i = 0; i < lyrics.length; i++) {
-          if (el.currentTime >= lyrics[i].time) idx = i;
-          else break;
-        }
-        setActiveLyricIndex(idx);
-      }
-    };
-    const onEnd = () => {
-      setPlaying(false);
-      setPaused(false);
-      setActiveLyricIndex(-1);
-      setElapsed(0);
-    };
-    el.addEventListener("loadedmetadata", onLoaded);
-    el.addEventListener("timeupdate", onTime);
-    el.addEventListener("ended", onEnd);
-    return () => {
-      el.removeEventListener("loadedmetadata", onLoaded);
-      el.removeEventListener("timeupdate", onTime);
-      el.removeEventListener("ended", onEnd);
-    };
-  }, [uploaded, muted, volume]);
-
-  // Cleanup object URL on unmount or new upload
   useEffect(() => {
     return () => {
       if (uploaded) URL.revokeObjectURL(uploaded.url);
@@ -646,7 +565,7 @@ export default function VinylPlayer() {
     }
     if (uploaded) URL.revokeObjectURL(uploaded.url);
     setUploaded(null);
-    if (currentTrack && (currentTrack as UploadedTrack).url) {
+    if (currentTrack && currentTrack.url) {
       setCurrentTrack(null);
       setPlaying(false);
       setPaused(false);
@@ -658,15 +577,15 @@ export default function VinylPlayer() {
 
   const copyLyrics = async () => {
     if (!currentTrack) return;
-    const lyrics = uploaded?.lyrics ?? (currentTrack as Track).lyrics.map((l) => ({ time: l.time, text: l.text }));
+    const lyrics = currentTrack.lyrics || [];
     if (lyrics.length === 0) {
       setUploadError("No lyrics available for this track.");
       setTimeout(() => setUploadError(null), 2400);
       return;
     }
     const text =
-      `${currentTrack.name}\n${uploaded ? "uploaded track" : (currentTrack as Track).mood}\n\n` +
-      lyrics.map((l) => l.text).join("\n") +
+      `${currentTrack.name}\n${uploaded ? "uploaded track" : currentTrack.mood}\n\n` +
+      lyrics.map((l: any) => l.text).join("\n") +
       `\n\n— for Heena`;
     try {
       await navigator.clipboard.writeText(text);
@@ -684,12 +603,11 @@ export default function VinylPlayer() {
     }
   };
 
-  const activeLyrics: LyricLine[] = uploaded?.lyrics ?? ((currentTrack as Track)?.lyrics?.map((l) => ({ time: l.time, text: l.text })) ?? []);
+  const activeLyrics = currentTrack ? (currentTrack.lyrics || []) : [];
   const isUploadedTrack = !!uploaded && currentTrack?.name === uploaded.name;
 
   return (
     <section ref={sectionRef} className="relative px-4 py-32">
-      {/* Ambient star field — a quiet cosmic backdrop for the record player */}
       <div className="vinyl-star-field" aria-hidden>
         {Array.from({ length: 28 }).map((_, i) => (
           <span
@@ -730,9 +648,6 @@ export default function VinylPlayer() {
           transition={{ duration: 0.6 }}
         >
           <div className="relative">
-            {/* Circular frequency spectrum — wraps around the vinyl record.
-                Absolutely positioned so the 320×320 canvas is centered on the
-                224×224 record, leaving 48px of spectrum ring visible outside. */}
             <div className="vinyl-spectrum-wrap" aria-hidden>
               <CircularSpectrum active={playing && !paused} />
             </div>
@@ -740,7 +655,6 @@ export default function VinylPlayer() {
               className={`vinyl-glow absolute -inset-3 rounded-full ${playing && !paused ? "playing" : ""}`}
               aria-hidden
             />
-            {/* Vinyl groove pulse rings — expanding concentric rings while playing */}
             {playing && !paused && (
               <>
                 <span className="vinyl-groove-ring" style={{ animationDelay: "0s" }} aria-hidden />
@@ -795,8 +709,6 @@ export default function VinylPlayer() {
             <Waveform active={playing && !paused} progress={progress} />
           </div>
 
-          {/* Real-time audio waveform — canvas reads from the AnalyserNode
-              on the shared audio engine and reacts to actual sound. */}
           <div className="mt-3 w-full">
             <div className="mb-1.5 flex items-center justify-between px-1">
               <span className="font-mono-elegant text-[0.55rem] uppercase tracking-[0.3em] text-violet-500/60">
@@ -874,15 +786,13 @@ export default function VinylPlayer() {
             </AnimatePresence>
           </div>
 
-          {/* Hidden audio element for real audio playback */}
           <audio
             ref={audioElRef}
-            src={uploaded?.url}
+            src={currentTrack ? (currentTrack.url || currentTrack.audioSrc) : undefined}
             preload="metadata"
             className="hidden"
           />
 
-          {/* Upload UI — load your own audio + .lrc */}
           <div className="mt-5 w-full">
             <input
               ref={fileInputRef}
@@ -1036,7 +946,7 @@ export default function VinylPlayer() {
                       No lyrics for this track yet — load a .lrc to see synced lines.
                     </p>
                   ) : (
-                    activeLyrics.map((line, i) => (
+                    activeLyrics.map((line: any, i: number) => (
                       <div
                         key={i}
                         onClick={() => seekToLyric(line.time, i)}
@@ -1093,8 +1003,6 @@ export default function VinylPlayer() {
         </motion.div>
       </div>
 
-      {/* Floating "now playing" mini-player — appears only when music is
-          playing (not paused) and the user has scrolled away from the vinyl section. */}
       <div
         className={`now-playing-mini ${showMiniPlayer ? "visible" : ""}`}
         role="region"
