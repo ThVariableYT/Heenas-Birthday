@@ -127,7 +127,7 @@ export const tracks: Track[] = [
     name: "Perfect",
     duration: "4:23",
     mood: "Bright · Lovely",
-    audioSrc: "/music/song3.flac",
+    audioSrc: "/music/song3.m4a",
     lrcSrc: "/music/song3.lrc",
     lyrics: [],
   },
